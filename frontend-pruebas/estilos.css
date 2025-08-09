@@ -1,0 +1,168 @@
+/* ====== Estilos base ====== */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f6f8;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+/* ====== Contenedor principal ====== */
+.contenedor {
+    max-width: 1100px;
+    margin: 40px auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+/* ====== Títulos ====== */
+h1, h2 {
+    color: #2c3e50;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+/* ====== Formulario ====== */
+form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #555;
+}
+
+input, select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 0.95rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    background: #fff;
+    transition: border-color 0.3s ease;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: #007bff;
+}
+
+/* ====== Botones ====== */
+button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: background 0.3s ease;
+}
+
+.btn-primario {
+    background-color: #007bff;
+    color: #fff;
+}
+.btn-primario:hover {
+    background-color: #0056b3;
+}
+
+.btn-secundario {
+    background-color: #6c757d;
+    color: #fff;
+}
+.btn-secundario:hover {
+    background-color: #565e64;
+}
+
+/* ====== Lista de elementos ====== */
+.lista-elementos {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.lista-elementos li {
+    background: #f8f9fa;
+    margin-bottom: 8px;
+    padding: 12px 15px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #e0e0e0;
+}
+
+.lista-elementos .acciones {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-editar {
+    background-color: #ffc107;
+    color: #212529;
+}
+.btn-editar:hover {
+    background-color: #e0a800;
+}
+
+.btn-eliminar {
+    background-color: #dc3545;
+    color: #fff;
+}
+.btn-eliminar:hover {
+    background-color: #a71d2a;
+}
+
+/* ====== Modal ====== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    padding-top: 80px;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+}
+
+.modal-contenido {
+    background-color: #fff;
+    margin: auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    animation: animarModal 0.3s ease-out;
+}
+
+@keyframes animarModal {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.cerrar-modal {
+    color: #aaa;
+    font-size: 1.5rem;
+    font-weight: bold;
+    float: right;
+    cursor: pointer;
+}
+.cerrar-modal:hover {
+    color: #333;
+}
+
+/* ====== Responsive ====== */
+@media (max-width: 600px) {
+    form {
+        grid-template-columns: 1fr;
+    }
+}

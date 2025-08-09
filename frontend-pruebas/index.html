@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inventario - Elementos</title>
+  <link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+  <div class="contenedor">
+    <h1>Gestión de Elementos</h1>
+
+    <!-- Formulario -->
+    <form id="form-elemento">
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+        <div>
+          <label for="nombre">Nombre</label>
+          <input id="nombre" name="nombre" type="text" required />
+        </div>
+
+        <div>
+          <label for="cantidad">Cantidad</label>
+          <input id="cantidad" name="cantidad" type="number" min="1" value="1" required />
+        </div>
+
+        <div>
+          <label for="categoria">Categoría</label>
+          <select id="categoria" name="categoria_id" required>
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="material">Material</label>
+          <select id="material" name="material_id" required>
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="unidad">Unidad</label>
+          <select id="unidad" name="unidad_id" required>
+            <option value="">Cargando...</option>
+          </select>
+        </div>
+
+        <div style="align-self:center;">
+          <label>
+            <input id="lleva-serie" name="lleva_serie" type="checkbox" />
+            ¿Lleva serie?
+          </label>
+          <!-- botón siempre en DOM pero oculto hasta que marque checkbox -->
+          <div style="margin-top:8px;">
+            <button id="btn-ver-series" type="button" style="display:none;">Ver series</button>
+          </div>
+        </div>
+
+        <div style="grid-column: 1 / -1;">
+          <label for="descripcion">Descripción</label>
+          <textarea id="descripcion" name="descripcion" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <button class="btn-primario" type="submit">Guardar elemento</button>
+      </div>
+    </form>
+
+    <!-- Contenedor de la lista general -->
+    <div id="contenedor-elementos" style="margin-top:24px;"></div>
+
+    <!-- Modal para series -->
+    <div id="modal-series" class="modal" style="display:none;">
+      <div class="modal-contenido">
+        <div class="modal-header">
+          <h2>Series</h2>
+          <button id="cerrar-modal-series" class="modal-close">&times;</button>
+        </div>
+
+        <div id="modal-body-series" style="margin-top:12px;">
+          <ul id="lista-series" class="lista-series"></ul>
+
+          <!-- pequeño formulario para agregar serie (opcional) -->
+          <form id="form-agregar-serie" style="margin-top:12px; display:flex; gap:8px;">
+            <input id="input-nueva-serie" placeholder="Nuevo número de serie" required />
+            <button id="btn-agregar-serie" type="submit" class="btn-secundario">Agregar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- config.js debe definir: API_URL, API_CATEGORIAS, API_MATERIALES, API_UNIDADES, API_SERIES -->
+  <script src="config.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
