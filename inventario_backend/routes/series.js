@@ -14,4 +14,11 @@ router.put('/:id', serieController.actualizarSerie);
 // Eliminar una serie por su ID
 router.delete('/:id', serieController.eliminarSerie);
 
+
+router.get('/test', (req, res) => {
+  console.log('📩 Ruta /api/series/test llamada');
+  res.json({ mensaje: 'Ruta de series funciona correctamente' });
+});
+
+
 module.exports = router;

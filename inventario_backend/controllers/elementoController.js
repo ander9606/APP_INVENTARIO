@@ -36,7 +36,6 @@ exports.crearElemento = async (req, res) => {
     });
   }
 
-  let elementoId;
 
   try {
     const resultado = await ElementoModel.crear({
@@ -48,31 +47,40 @@ exports.crearElemento = async (req, res) => {
       material_id,
       unidad_id,
       estado,
-      ubicacion
+      ubicacion: lleva_serie ? null : ubicacion // Solo asignar ubicación si no lleva serie
     });
 
-    elementoId = resultado.insertId;
+    const elementoId = resultado.insertId;
     console.log(`✅ Elemento creado con ID: ${elementoId}`);
   } catch (error) {
     console.error('❌ Error al insertar en elementos:', error.message || error);
     return res.status(500).json({ error: 'Error al insertar en elementos', detalle: error.message });
   }
 
+
   if (lleva_serie && series.length > 0) {
     try {
-      const seriesConFecha = series.map(s => ({
+      // Agregar fecha_ingreso y estado por defecto a cada serie
+      const seriesConFechaYUbicacion = series.map(s => ({
         numero_serie: s.numero_serie,
         estado: s.estado || 'nuevo',
-        fecha_ingreso: new Date()
+        fecha_ingreso: new Date(),
+        ubicacion: s.ubicacion || null
       }));
 
-      console.log('📦 Insertando series:', JSON.stringify(seriesConFecha, null, 2));
+      console.log('📦 Insertando series:', JSON.stringify(seriesConFechaYUbicacion, null, 2));
+      //await ElementoModel.crearSeriesPorElemento(elementoId, seriesConFechaYUbicacion); para pruebas
+      await ElementoModel.crearSeriesPorElemento(elementoId, seriesConFechaYUbicacion);
 
-      await ElementoModel.crearSeriesPorElemento(elementoId, seriesConFecha);
+      res.status(201).json({
+        mensaje: `Elemento creado exitosamente con ID: ${elementoId}`,
+        id: elementoId
+      });
     } catch (error) {
       console.error('❌ Error al insertar series:', error.message || error);
       return res.status(500).json({ error: 'Error al insertar series', detalle: error.message });
     }
+    return; // Prevents sending multiple responses
   }
 
   res.status(201).json({

@@ -3,13 +3,14 @@ const db = require('./db');
 
 const SerieModel = {
   // Obtener todas las series de un elemento
-  obtenerPorElemento: async (idElemento) => {
-    const [filas] = await db.query(
-      'SELECT * FROM series WHERE id_elemento = ?',
-      [idElemento]
-    );
-    return filas;
-  },
+obtenerPorElemento: async (idElemento) => {
+  console.log('🔍 Buscando series con id_elemento =', idElemento);
+  const [filas] = await db.query(
+    'SELECT * FROM series WHERE id_elemento = ?',
+    [idElemento]
+  );
+  return filas;
+},
 
   // Crear una nueva serie
   crear: async ({ id_elemento, numero_serie, estado, fecha_ingreso }) => {

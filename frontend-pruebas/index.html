@@ -1,98 +1,80 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Inventario - Elementos</title>
-  <link rel="stylesheet" href="estilos.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Inventario</title>
+    
+    <!-- Enlace a la hoja de estilos externa -->
+    <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-  <div class="contenedor">
-    <h1>Gestión de Elementos</h1>
 
-    <!-- Formulario -->
-    <form id="form-elemento">
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-        <div>
-          <label for="nombre">Nombre</label>
-          <input id="nombre" name="nombre" type="text" required />
+    <header>
+        <h1>📦 Gestión de Inventario</h1>
+    </header>
+
+    <main>
+        
+        <button id="btn-agregar" aria-label="Agregar nuevo elemento">➕ Agregar Nuevo Elemento</button>
+        
+        <div id="formulario-nuevo" class="oculto">
+            <h2>Registrar Nuevo Elemento</h2>
+            <form id="form-elemento">
+                
+                <label for="categoria">Categoría:</label>
+                <select id="categoria" name="categoria" required></select>
+                
+                <label for="nombre">Nombre del Elemento:</label>
+                <input type="text" id="nombre" name="nombre" required>
+                
+                <label for="descripcion">Descripción:</label>
+                <textarea id="descripcion" name="descripcion"></textarea>
+                
+                <label for="material">Material:</label>
+                <select id="material" name="material" required></select>
+                
+                <label for="unidad">Unidad:</label>
+                <select id="unidad" name="unidad" required></select>
+                
+                <label for="cantidad">Cantidad:</label>
+                <input type="number" id="cantidad" name="cantidad" min="0" value="0" required>
+                
+                <label>
+                    <input type="checkbox" id="requiere_series" name="requiere_series">
+                    ¿Requiere número de serie?
+                </label>
+                
+                <div id="series-container" style="display: none;">
+                    <!-- Aquí se agregarán los campos de serie dinámicamente -->
+                </div>
+
+                <button type="submit">Guardar Elemento</button>
+            </form>
         </div>
 
-        <div>
-          <label for="cantidad">Cantidad</label>
-          <input id="cantidad" name="cantidad" type="number" min="1" value="1" required />
-        </div>
+        <section>
+            <h2>Elementos Registrados</h2>
+            <div id="lista-elementos">
+                <p>Cargando elementos...</p>
+            </div>
+        </section>
 
-        <div>
-          <label for="categoria">Categoría</label>
-          <select id="categoria" name="categoria_id" required>
-            <option value="">Cargando...</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="material">Material</label>
-          <select id="material" name="material_id" required>
-            <option value="">Cargando...</option>
-          </select>
-        </div>
-
-        <div>
-          <label for="unidad">Unidad</label>
-          <select id="unidad" name="unidad_id" required>
-            <option value="">Cargando...</option>
-          </select>
-        </div>
-
-        <div style="align-self:center;">
-          <label>
-            <input id="lleva-serie" name="lleva_serie" type="checkbox" />
-            ¿Lleva serie?
-          </label>
-          <!-- botón siempre en DOM pero oculto hasta que marque checkbox -->
-          <div style="margin-top:8px;">
-            <button id="btn-ver-series" type="button" style="display:none;">Ver series</button>
-          </div>
-        </div>
-
-        <div style="grid-column: 1 / -1;">
-          <label for="descripcion">Descripción</label>
-          <textarea id="descripcion" name="descripcion" rows="2"></textarea>
-        </div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <button class="btn-primario" type="submit">Guardar elemento</button>
-      </div>
-    </form>
-
-    <!-- Contenedor de la lista general -->
-    <div id="contenedor-elementos" style="margin-top:24px;"></div>
-
+    </main>
+    
     <!-- Modal para series -->
-    <div id="modal-series" class="modal" style="display:none;">
-      <div class="modal-contenido">
-        <div class="modal-header">
-          <h2>Series</h2>
-          <button id="cerrar-modal-series" class="modal-close">&times;</button>
+    <div id="modal-series" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <button id="cerrar-modal-series" class="close-btn" aria-label="Cerrar">&times;</button>
+            <h3 id="modal-title">Series del Elemento</h3>
+            <ul id="lista-series">
+                <!-- Las series se cargarán aquí con JavaScript -->
+            </ul>
         </div>
-
-        <div id="modal-body-series" style="margin-top:12px;">
-          <ul id="lista-series" class="lista-series"></ul>
-
-          <!-- pequeño formulario para agregar serie (opcional) -->
-          <form id="form-agregar-serie" style="margin-top:12px; display:flex; gap:8px;">
-            <input id="input-nueva-serie" placeholder="Nuevo número de serie" required />
-            <button id="btn-agregar-serie" type="submit" class="btn-secundario">Agregar</button>
-          </form>
-        </div>
-      </div>
     </div>
-
-  </div>
-
-  <!-- config.js debe definir: API_URL, API_CATEGORIAS, API_MATERIALES, API_UNIDADES, API_SERIES -->
-  <script src="config.js"></script>
-  <script src="main.js"></script>
+    
+    <!-- Enlace al script externo. 'defer' asegura que se ejecute después de que el HTML se cargue. -->
+     <script src="config.js"></script>
+    <script src="main.js" defer></script>
 </body>
 </html>

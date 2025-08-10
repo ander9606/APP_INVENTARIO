@@ -51,8 +51,8 @@ exports.eliminar = async (id) => {
 // Crear múltiples series asociadas a un elemento
 exports.crearSeriesPorElemento = async (idElemento, series) => {
   const query = `
-    INSERT INTO series (id_elemento, numero_serie, estado, fecha_ingreso)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO series (id_elemento, numero_serie, estado, fecha_ingreso, ubicacion)
+    VALUES (?, ?, ?, ?, ?)
   `;
 
   for (const serie of series) {
@@ -62,6 +62,7 @@ exports.crearSeriesPorElemento = async (idElemento, series) => {
         serie.numero_serie,
         serie.estado || 'nuevo',
         serie.fecha_ingreso,
+        serie.ubicacion || null
       ]);
     } catch (error) {
       console.error(`❌ Error al insertar la serie ${serie.numero_serie}:`, error.message);
@@ -69,4 +70,4 @@ exports.crearSeriesPorElemento = async (idElemento, series) => {
     }
   }
 };
-
+  

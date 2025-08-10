@@ -1,350 +1,327 @@
-/* main.js
-   - Depende de las constantes definidas en config.js:
-     API_URL, API_CATEGORIAS, API_MATERIALES, API_UNIDADES, API_SERIES
-*/
+/********************************************
+ * main.js - Gestión de inventario frontend
+ ********************************************/
 
-// mapas para transformar ids -> nombres (categoría, material, unidad)
-const mapas = {
-  categorias: {},
-  materiales: {},
-  unidades: {}
+/* ==========
+   CONSTANTES Y CONFIGURACIÓN
+   ========== */
+const elementosDOM = {
+    listaElementos: document.getElementById('lista-elementos'),
+    listaSeries: document.getElementById('lista-series'),
+    selectCategoria: document.getElementById('categoria'),
+    selectMaterial: document.getElementById('material'),
+    selectUnidad: document.getElementById('unidad'),
+    formElemento: document.getElementById('form-elemento'),
+    btnAgregar: document.getElementById('btn-agregar'),
+    formularioNuevo: document.getElementById('formulario-nuevo'),
+    modalSeries: document.getElementById('modal-series'),
+    cerrarModalSeries: document.getElementById('cerrar-modal-series'),
+    seriesContainer: document.getElementById('series-container')
 };
 
-// ------  util: check response ok  ------
-async function fetchJson(url, opts = {}) {
-  const res = await fetch(url, opts);
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} - ${text}`);
-  }
-  return res.json();
-}
+const mapas = {
+    categorias: {},
+    materiales: {},
+    unidades: {}
+};
 
-// ------ cargar catálogo y poblar <select> ------
-async function cargarCatalogo(api, selectId, mapa, label = 'Seleccione') {
-  try {
-    const data = await fetchJson(api);
+const requiereSeriesCheckbox = elementosDOM.formElemento.requiere_series;
+const cantidadInput = elementosDOM.formElemento.cantidad;
+const seriesContainer = elementosDOM.seriesContainer; // Falta esta constante
 
-    // poblar mapa
-    data.forEach(item => {
-      // si el backend devuelve { id, nombre }
-      mapa[item.id] = item.nombre ?? item.nombre_completo ?? item.name ?? item.descripcion ?? item.label;
-    });
-
-    // poblar select (si existe)
-    const select = document.getElementById(selectId);
-    if (select) {
-      select.innerHTML = `<option value="">${label}</option>`;
-      data.forEach(item => {
-        const option = document.createElement('option');
-        option.value = item.id;
-        option.textContent = mapa[item.id] || item.nombre || item.name;
-        select.appendChild(option);
-      });
-    }
-  } catch (err) {
-    console.error(`Error cargando catálogo ${selectId}:`, err);
-    const select = document.getElementById(selectId);
-    if (select) select.innerHTML = `<option value="">Error al cargar</option>`;
-  }
-}
-
-// ------ cargar y renderizar lista general de elementos ------
-async function cargarElementos() {
-  try {
-    const elementos = await fetchJson(API_URL);
-
-    const cont = document.getElementById('contenedor-elementos');
-    if (!cont) return;
-
-    // si no hay elementos, mostrar aviso
-    if (!Array.isArray(elementos) || elementos.length === 0) {
-      cont.innerHTML = `<p>No se encontraron elementos.</p>`;
-      return;
+/* ==========
+   FUNCIONES AUXILIARES PARA LA API
+   ========== */
+async function manejarPeticionAPI(url, metodo = 'GET', data = null) {
+    const opciones = {
+        method: metodo,
+        headers: { 'Content-Type': 'application/json' }
+    };
+    if (data) {
+        opciones.body = JSON.stringify(data);
     }
 
-    // crear tabla
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.className = 'tabla-elementos';
-    table.innerHTML = `
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Descripción</th>
-          <th>Categoría</th>
-          <th>Material</th>
-          <th>Unidad</th>
-          <th>Cantidad</th>
-          <th>Serie</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-    `;
-    const tbody = document.createElement('tbody');
-
-    elementos.forEach(el => {
-      const tr = document.createElement('tr');
-
-      // Helpers para campos que pueden venir con nombres distintos
-      const categoriaId = el.categoria_id ?? el.categoria ?? el.categoriaId ?? null;
-      const materialId  = el.material_id ?? el.material ?? el.materialId ?? null;
-      const unidadId    = el.unidad_id ?? el.unidad ?? el.unidadId ?? null;
-      const cantidadVal = el.cantidad ?? el.cantidad_actual ?? el.stock ?? 0;
-      const nombreVal   = el.nombre ?? el.name ?? '';
-      const descripcionVal = el.descripcion ?? el.description ?? '';
-
-      const llevaSerie = Boolean(
-        el.requiere_series ?? el.lleva_serie ?? el.llevaSerie ?? el.tiene_serie ?? false
-      );
-
-      // celdas básicas
-      const tdNombre = document.createElement('td'); tdNombre.textContent = nombreVal; tr.appendChild(tdNombre);
-      const tdDesc   = document.createElement('td'); tdDesc.textContent = descripcionVal; tr.appendChild(tdDesc);
-
-      const tdCat = document.createElement('td');
-      tdCat.textContent = mapas.categorias[categoriaId] || 'Sin categoría';
-      tr.appendChild(tdCat);
-
-      const tdMat = document.createElement('td');
-      tdMat.textContent = mapas.materiales[materialId] || 'Sin material';
-      tr.appendChild(tdMat);
-
-      const tdUni = document.createElement('td');
-      tdUni.textContent = mapas.unidades[unidadId] || 'Sin unidad';
-      tr.appendChild(tdUni);
-
-      const tdCant = document.createElement('td');
-      tdCant.textContent = cantidadVal;
-      tr.appendChild(tdCant);
-
-      const tdSerie = document.createElement('td');
-      tdSerie.textContent = llevaSerie ? 'Sí' : 'No';
-      tr.appendChild(tdSerie);
-
-      // acciones: Ver series, Editar, Eliminar
-      const tdAcc = document.createElement('td');
-      tdAcc.style.display = 'flex';
-      tdAcc.style.gap = '8px';
-
-      // Ver Series
-      const btnVerSeries = document.createElement('button');
-      btnVerSeries.type = 'button';
-      btnVerSeries.className = 'btn-ver-series';
-      btnVerSeries.textContent = 'Ver series';
-      btnVerSeries.addEventListener('click', () => abrirModalSeries(el.id));
-      tdAcc.appendChild(btnVerSeries);
-
-      // Editar (placeholder)
-      const btnEditar = document.createElement('button');
-      btnEditar.type = 'button';
-      btnEditar.className = 'btn-editar';
-      btnEditar.textContent = 'Editar';
-      btnEditar.addEventListener('click', () => {
-        // Aquí puedes abrir un formulario de edición y prellenarlo con `el`
-        console.log('Editar elemento', el.id, el);
-        alert('Editar aún no implementado (placeholder). id=' + el.id);
-      });
-      tdAcc.appendChild(btnEditar);
-
-      // Eliminar
-      const btnEliminar = document.createElement('button');
-      btnEliminar.type = 'button';
-      btnEliminar.className = 'btn-eliminar';
-      btnEliminar.textContent = 'Eliminar';
-      btnEliminar.addEventListener('click', async () => {
-        if (!confirm(`¿Eliminar el elemento "${nombreVal}"?`)) return;
-        try {
-          await fetchJson(`${API_URL}/${el.id}`, { method: 'DELETE' });
-          // refrescar lista
-          cargarElementos();
-        } catch (err) {
-          console.error('Error eliminando elemento:', err);
-          alert('No se pudo eliminar el elemento.');
+    try {
+        const res = await fetch(url, opciones);
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({ message: res.statusText }));
+            throw new Error(`HTTP ${res.status}: ${errorData.message || 'Error desconocido'}`);
         }
-      });
-      tdAcc.appendChild(btnEliminar);
-
-      tr.appendChild(tdAcc);
-      tbody.appendChild(tr);
-    });
-
-    // render
-    table.appendChild(tbody);
-    cont.innerHTML = '';
-    cont.appendChild(table);
-
-  } catch (err) {
-    console.error('Error cargando elementos:', err);
-    const cont = document.getElementById('contenedor-elementos');
-    if (cont) cont.innerHTML = `<p>Error al cargar elementos.</p>`;
-  }
+        return res.status === 204 ? {} : await res.json();
+    } catch (error) {
+        console.error(`❌ Error en la petición a ${url} (${metodo}):`, error);
+        alert(`Error de comunicación con la API: ${error.message}`);
+        throw error;
+    }
 }
 
-// ------ series: cargar, abrir modal, cerrar, agregar ------
-async function cargarSeries(elementoId) {
-  try {
-    const lista = document.getElementById('lista-series');
-    lista.innerHTML = '<li>Cargando...</li>';
+/* ==========
+   LÓGICA DE LA APLICACIÓN
+   ========== */
 
-    // consulta por elemento
-    const data = await fetchJson(`${API_SERIES}/${elementoId}`);
+function crearInputSerie(index) {
+    const div = document.createElement('div');
+    div.className = 'serie-input';
 
-    lista.innerHTML = '';
-    if (!Array.isArray(data) || data.length === 0) {
-      lista.innerHTML = '<li>No hay series registradas para este elemento.</li>';
-      return;
+    div.innerHTML = `
+    <label>Serie ${index + 1}: </label>
+    <input name="numero_serie_${index}" placeholder="Número de serie" required>
+    <select name="estado_${index}" required>
+        <option value="">Seleccione estado</option>
+        <option value="nuevo">Nuevo</option>
+        <option value="usado">Usado</option>
+        <option value="dañado">Dañado</option>
+    </select>
+    <input name="ubicacion_${index}" placeholder="Ubicación individual" required>`;
+
+    return div;
+}
+
+function actualizarInputSeries() {
+    if (requiereSeriesCheckbox.checked) {
+        seriesContainer.style.display = 'block';
+        seriesContainer.innerHTML = ''; // Limpiar contenido previo
+
+        const cantidad = parseInt(cantidadInput.value) || 0;
+
+        for (let i = 0; i < cantidad; i++) {
+            seriesContainer.appendChild(crearInputSerie(i));
+        } 
+    } else {
+        seriesContainer.style.display = 'none';
+        seriesContainer.innerHTML = ''; // Limpiar contenido previo
+    }
+}
+
+// actualiza inputs cuando cambian cantidad o checkbox
+cantidadInput.addEventListener('input', () => {
+    if (requiereSeriesCheckbox.checked) actualizarInputSeries();
+});
+
+requiereSeriesCheckbox.addEventListener('change', () => {
+    actualizarInputSeries();
+});
+
+// capturar datos de series al enviar el formulario
+elementosDOM.formElemento.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(elementosDOM.formElemento);
+
+    const nombre = formData.get('nombre').trim();
+    const descripcion = formData.get('descripcion').trim();
+    const categoria_id = formData.get('categoria');
+    const material_id = formData.get('material');
+    const unidad_id = formData.get('unidad');
+    const cantidad = parseInt(formData.get('cantidad'), 10);
+    const lleva_serie = formData.get('requiere_series') === 'on';
+
+    let ubicacionGeneral = formData.get('ubicacion') || '';
+
+    // Armar array de series
+    const series = [];
+    if (lleva_serie) {
+        for (let i = 0; i < cantidad; i++) {
+            const numero_serie = formData.get(`numero_serie_${i}`).trim();
+            const estado = formData.get(`estado_${i}`);
+            const ubicacion = formData.get(`ubicacion_${i}`).trim();
+
+            if (!numero_serie || !ubicacion || !estado) {
+                alert(`Complete todos los campos para la serie #${i + 1}`);
+                return;
+            }
+
+            series.push({ numero_serie, estado, ubicacion });
+        }
+        ubicacionGeneral = null; // porque cada serie tiene su propia ubicación
     }
 
-    data.forEach(s => {
-      const li = document.createElement('li');
-      // posible nombres de campo: numero_serie, numero, codigo, serial
-      li.textContent = s.numero_serie ?? s.numero ?? s.codigo ?? s.serial ?? JSON.stringify(s);
-      lista.appendChild(li);
+    const data = {
+        nombre,
+        descripcion,
+        categoria_id,
+        material_id,
+        unidad_id,
+        cantidad,
+        lleva_serie,
+        ubicacion: ubicacionGeneral,
+        series
+    };
+
+    try {
+        await manejarPeticionAPI(API_URL, 'POST', data);
+        alert('Elemento guardado con éxito');
+        elementosDOM.formElemento.reset();
+        seriesContainer.innerHTML = '';
+        elementosDOM.formularioNuevo.classList.add('oculto');
+        cargarElementos();
+    } catch (error) {
+        console.error('Error guardando elemento:', error);
+        alert('Error guardando elemento');
+    }
+});
+
+async function cargarCatalogo(selectElemento, url, mapa, textoDefault) {
+    selectElemento.innerHTML = `<option value="">${textoDefault}</option>`;
+    try {
+        const datos = await manejarPeticionAPI(url);
+        datos.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item.id;
+            mapa[item.id] = item.nombre;
+            opt.textContent = item.nombre;
+            selectElemento.appendChild(opt);
+        });
+    } catch (err) {
+        console.error(`❌ Error cargando catálogo desde ${url}`, err);
+        selectElemento.innerHTML = `<option value="">Error al cargar</option>`;
+    }
+}
+
+async function cargarElementos() {
+    const contenedor = elementosDOM.listaElementos;
+    contenedor.innerHTML = `<p>Cargando elementos...</p>`;
+
+    try {
+        const lista = await manejarPeticionAPI(API_URL);
+
+        if (!Array.isArray(lista) || lista.length === 0) {
+            contenedor.innerHTML = `<p>No hay elementos registrados.</p>`;
+            return;
+        }
+
+        const tabla = document.createElement('table');
+        tabla.classList.add('tabla-elementos');
+        tabla.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Material</th>
+                    <th>Cantidad</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+
+        const tbody = tabla.querySelector('tbody');
+
+        lista.forEach(elem => {
+            const tr = document.createElement('tr');
+            
+            tr.innerHTML = `
+                <td data-label="Nombre">${elem.nombre}</td>
+                <td data-label="Categoría">${mapas.categorias[elem.categoria_id] || 'N/A'}</td>
+                <td data-label="Material">${mapas.materiales[elem.material_id] || 'N/A'}</td>
+                <td data-label="Cantidad">${elem.cantidad}</td>
+                <td data-label="Acciones">
+                    ${elem.requiere_series ? `<button data-id="${elem.id}" class="btn-series">Ver series</button>` : ''}
+                    <button data-id="${elem.id}" class="btn-eliminar">Eliminar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        contenedor.innerHTML = '';
+        contenedor.appendChild(tabla);
+    } catch (err) {
+        console.error('❌ Error cargando elementos', err);
+        contenedor.innerHTML = `<p>Error al cargar elementos. Revisa la consola y asegúrate que el backend está funcionando.</p>`;
+    }
+}
+
+async function mostrarSeries(id_elemento) {
+    const contenedor = elementosDOM.listaSeries;
+    contenedor.innerHTML = `<p>Cargando series...</p>`;
+    elementosDOM.modalSeries.classList.add('activo');
+
+    try {
+        const series = await manejarPeticionAPI(`${API_SERIES}/${id_elemento}`);
+
+        if (!Array.isArray(series) || series.length === 0) {
+            contenedor.innerHTML = `<p>No hay series registradas para este elemento.</p>`;
+            return;
+        }
+
+        contenedor.innerHTML = '';
+        series.forEach(s => {
+            const li = document.createElement('li');
+            li.textContent = `Serie: ${s.numero_serie} - Estado: ${s.estado} - Ubicación: ${s.ubicacion || 'N/A'}`;
+            contenedor.appendChild(li);
+        });
+
+    } catch (err) {
+        console.error('❌ Error mostrando series', err);
+        contenedor.innerHTML = `<p>Error al cargar series.</p>`;
+    }
+}
+
+async function eliminarElemento(id) {
+    if (!confirm('¿Seguro que quieres eliminar este elemento?')) return;
+
+    try {
+        await manejarPeticionAPI(`${API_URL}/${id}`, 'DELETE');
+        alert('Elemento eliminado correctamente');
+        cargarElementos();
+    } catch (err) {
+        console.error('❌ Error eliminando elemento', err);
+        alert(`Error al eliminar: ${err.message}`);
+    }
+}
+
+/* ==========
+   INICIALIZACIÓN
+   ========== */
+function inicializarEventos() {
+    elementosDOM.btnAgregar.addEventListener('click', () => {
+        elementosDOM.formularioNuevo.classList.toggle('oculto');
     });
-  } catch (err) {
-    console.error('Error cargando series:', err);
-    const lista = document.getElementById('lista-series');
-    if (lista) lista.innerHTML = '<li>Error cargando series.</li>';
-  }
-}
 
-function abrirModalSeries(elementoId) {
-  const modal = document.getElementById('modal-series');
-  if (!modal) return;
-  modal.style.display = 'flex';
-  modal.dataset.elementoId = elementoId;
-  cargarSeries(elementoId);
-}
+    elementosDOM.listaElementos.addEventListener('click', e => {
+        const id = e.target.dataset.id;
+        if (!id) return;
 
-function cerrarModalSeries() {
-  const modal = document.getElementById('modal-series');
-  if (!modal) return;
-  modal.style.display = 'none';
-  modal.dataset.elementoId = '';
-  const lista = document.getElementById('lista-series'); if (lista) lista.innerHTML = '';
-}
-
-// agregar serie desde modal (pequeño formulario)
-async function agregarSerieDesdeModal(event) {
-  event.preventDefault();
-  const modal = document.getElementById('modal-series');
-  if (!modal) return;
-  const elementoId = modal.dataset.elementoId;
-  const input = document.getElementById('input-nueva-serie');
-  const valor = input.value.trim();
-  if (!valor) return;
-
-  try {
-    // Ajusta la forma del payload según tu API: aquí envío elemento_id + numero_serie
-    await fetchJson(API_SERIES, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ elemento_id: elementoId, numero_serie: valor })
-    });
-    input.value = '';
-    cargarSeries(elementoId);
-  } catch (err) {
-    console.error('Error agregando serie:', err);
-    alert('No se pudo agregar la serie.');
-  }
-}
-
-// ------ formulario: enviar nuevo elemento ------
-async function handleSubmitFormulario(e) {
-  e.preventDefault();
-  const nombre = document.getElementById('nombre').value.trim();
-  const descripcion = document.getElementById('descripcion').value.trim();
-  const cantidad = parseInt(document.getElementById('cantidad').value) || 0;
-  const requiere_series = document.getElementById('lleva-serie').checked;
-  const categoria_id = parseInt(document.getElementById('categoria').value) || null;
-  const material_id = parseInt(document.getElementById('material').value) || null;
-  const unidad_id = parseInt(document.getElementById('unidad').value) || null;
-
-  const nuevo = {
-    nombre,
-    descripcion,
-    cantidad,
-    requiere_series,
-    categoria_id,
-    material_id,
-    unidad_id
-  };
-
-  try {
-    await fetchJson(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nuevo)
+        if (e.target.classList.contains('btn-series')) {
+            mostrarSeries(id);
+        }
+        if (e.target.classList.contains('btn-eliminar')) {
+            eliminarElemento(id);
+        }
     });
 
-    // reset y refrescar lista
-    e.target.reset();
-    // ocultar boton ver series por si estaba visible
-    const btnVS = document.getElementById('btn-ver-series'); if (btnVS) btnVS.style.display = 'none';
-    cargarElementos();
-  } catch (err) {
-    console.error('Error creando elemento:', err);
-    alert('No se pudo crear el elemento.');
-  }
+    elementosDOM.cerrarModalSeries.addEventListener('click', () => {
+        elementosDOM.modalSeries.classList.remove('activo');
+    });
+
+    elementosDOM.modalSeries.addEventListener('click', e => {
+        if (e.target === elementosDOM.modalSeries) {
+            elementosDOM.modalSeries.classList.remove('activo');
+        }
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === "Escape" && elementosDOM.modalSeries.classList.contains('activo')) {
+            elementosDOM.modalSeries.classList.remove('activo');
+        }
+    });
+
+    // Eventos para inputs dinámicos
+    cantidadInput.addEventListener('input', () => {
+        if (requiereSeriesCheckbox.checked) actualizarInputSeries();
+    });
+    requiereSeriesCheckbox.addEventListener('change', () => {
+        actualizarInputSeries();
+    });
 }
 
-// ------ inicialización ------
 document.addEventListener('DOMContentLoaded', async () => {
-  // cargar catálogos en paralelo
-  await Promise.all([
-    cargarCatalogo(API_CATEGORIAS, 'categoria', mapas.categorias, 'Seleccione categoría'),
-    cargarCatalogo(API_MATERIALES, 'material', mapas.materiales, 'Seleccione material'),
-    cargarCatalogo(API_UNIDADES, 'unidad', mapas.unidades, 'Seleccione unidad')
-  ]);
+    await Promise.all([
+        cargarCatalogo(elementosDOM.selectCategoria, API_CATEGORIAS, mapas.categorias, 'Seleccione categoría'),
+        cargarCatalogo(elementosDOM.selectMaterial, API_MATERIALES, mapas.materiales, 'Seleccione material'),
+        cargarCatalogo(elementosDOM.selectUnidad, API_UNIDADES, mapas.unidades, 'Seleccione unidad')
+    ]);
 
-  // cargar lista general
-  cargarElementos();
-
-  // toggle boton Ver series cuando checkbox cambia
-  const chkSerie = document.getElementById('lleva-serie');
-  const btnVerSeries = document.getElementById('btn-ver-series');
-  if (chkSerie && btnVerSeries) {
-    chkSerie.addEventListener('change', () => {
-      btnVerSeries.style.display = chkSerie.checked ? 'inline-block' : 'none';
-    });
-  }
-
-  // abrir modal desde el botón (si quieres que abra sin seleccionar elemento,
-  // mantenemos el comportamiento anterior de abrir y listar todas las series)
-  if (btnVerSeries) {
-    btnVerSeries.addEventListener('click', () => {
-      // si quieres abrir series generales sin elemento, usar cargarSeries() sin id
-      // pero el endpoint que implementamos requiere elemento_id, así que comprobamos dataset
-      const modal = document.getElementById('modal-series');
-      const elementoId = modal.dataset.elementoId || null;
-      if (elementoId) {
-        abrirModalSeries(elementoId);
-      } else {
-        // Si no hay elemento seleccionado, cargamos todas las series (opcional)
-        // cargarSeries(null);
-        alert('Para ver series específicas, abre "Ver series" desde una fila en la lista de elementos.');
-      }
-    });
-  }
-
-  // cerrar modal
-  const btnCerrar = document.getElementById('cerrar-modal-series');
-  if (btnCerrar) btnCerrar.addEventListener('click', cerrarModalSeries);
-
-  // submit formulario de elemento
-  const form = document.getElementById('form-elemento');
-  if (form) form.addEventListener('submit', handleSubmitFormulario);
-
-  // submit para agregar serie en modal
-  const formAgregarSerie = document.getElementById('form-agregar-serie');
-  if (formAgregarSerie) formAgregarSerie.addEventListener('submit', agregarSerieDesdeModal);
-
-  // click fuera del modal para cerrarlo (mejora UX)
-  const modal = document.getElementById('modal-series');
-  if (modal) {
-    modal.addEventListener('click', (ev) => {
-      if (ev.target === modal) cerrarModalSeries();
-    });
-  }
+    cargarElementos();
+    inicializarEventos();
 });

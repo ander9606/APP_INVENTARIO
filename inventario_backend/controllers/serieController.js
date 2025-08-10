@@ -5,13 +5,16 @@ const SerieModel = require('../models/SerieModel');
 exports.obtenerSeriesPorElemento = async (req, res) => {
   try {
     const { id_elemento } = req.params;
+    console.log('🛠 id_elemento recibido en controlador:', id_elemento);
     const series = await SerieModel.obtenerPorElemento(id_elemento);
+    console.log('📦 Resultado SQL:', series);
     res.json(series);
   } catch (error) {
     console.error('Error al obtener series:', error);
     res.status(500).json({ error: 'Error al obtener las series del elemento' });
   }
 };
+
 
 // Crear una nueva serie para un elemento
 exports.crearSerie = async (req, res) => {
