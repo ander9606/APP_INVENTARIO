@@ -1,69 +1,78 @@
 // controllers/categoriasController.js
-const db = require('../models/db');
+const CategoriasModel = require('../models/CategoriasModel');
+const { construirJerarquia } = require('../utils/categoriasUtils');
 
-// Obtener TODAS las categorías con sus relaciones (si quieres traerlas planas)
-exports.obtenerCategorias = async (req, res) => {
-  try {
-    const [categorias] = await db.query('SELECT * FROM categorias');
-    res.json(categorias);
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener categorías', error });
-  }
-};
-
-// Obtener categorías jerárquicamente (agrupadas por padre e hijas)
-exports.obtenerCategoriasJerarquicas = async (req, res) => {
-  try {
-    const [categorias] = await db.query('SELECT * FROM categorias');
-
-    // Organizar jerárquicamente
-    const arbol = categorias
-      .filter(c => c.padre_id === null)
-      .map(padre => ({
-        ...padre,
-        subcategorias: categorias.filter(hijo => hijo.padre_id === padre.id)
-      }));
-
-    res.json(arbol);
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al obtener jerarquía de categorías', error });
-  }
-};
-
-// Crear una categoría o subcategoría
-exports.crearCategoria = async (req, res) => {
-  try {
-    const { nombre, padre_id } = req.body;
-
-    const [resultado] = await db.query(
-      'INSERT INTO categorias (nombre, padre_id) VALUES (?, ?)',
-      [nombre, padre_id || null]
-    );
-
-    res.json({ mensaje: 'Categoría creada', id: resultado.insertId });
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al crear categoría', error });
-  }
-};
-
-// Eliminar una categoría (se eliminan también sus subcategorías por ON DELETE CASCADE)
-exports.eliminarCategoria = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await db.query('DELETE FROM categorias WHERE id = ?', [id]);
-    res.json({ mensaje: 'Categoría eliminada' });
-  } catch (error) {
-    res.status(500).json({ mensaje: 'Error al eliminar categoría', error });
-  }
-};
-
-exports.obtenerSubcategorias = async (req, res) => {
-    const { id } = req.params;
-    db.query('SELECT * FROM categorias WHERE padre_id = ?', [id], (error, resultados) => {
-        if (error) {
-            console.error('Error al obtener subcategorías:', error);
-            return res.status(500).json({ error: 'Error al obtener subcategorías' });
+module.exports = {
+    // Obtener todas las categorías planas
+    async obtenerCategorias(req, res) {
+        try {
+            const categorias = await CategoriasModel.obtenerTodas();
+            res.json(categorias);
+        } catch (error) {
+            console.error('Error al obtener categorías:', error);
+            res.status(500).json({ error: 'Error al obtener categorías' });
         }
-        res.json(resultados);
-    });
+    },
+
+    // Obtener todas las categorías en forma jerárquica (árbol)
+    async obtenerCategoriasJerarquicas(req, res) {
+        try {
+            const categorias = await CategoriasModel.obtenerTodas();
+            const jerarquia = construirJerarquia(categorias);
+            res.json(jerarquia);
+        } catch (error) {
+            console.error('Error al obtener jerarquía de categorías:', error);
+            res.status(500).json({ error: 'Error al obtener jerarquía de categorías' });
+        }
+    },
+
+    // Crear nueva categoría o subcategoría
+    async crearCategoria(req, res) {
+        try {
+            const { nombre, descripcion, categoria_padre_id } = req.body;
+            if (!nombre) {
+                return res.status(400).json({ error: 'El nombre es obligatorio' });
+            }
+
+            const nuevaCategoria = await CategoriasModel.crear({
+                nombre,
+                descripcion,
+                categoria_padre_id: categoria_padre_id || null
+            });
+
+            res.status(201).json(nuevaCategoria);
+        } catch (error) {
+            console.error('Error al crear categoría:', error);
+            res.status(500).json({ error: 'Error al crear categoría' });
+        }
+    },
+
+    // Eliminar categoría
+    async eliminarCategoria(req, res) {
+        try {
+            const { id } = req.params;
+            const resultado = await CategoriasModel.eliminar(id);
+
+            if (resultado.affectedRows === 0) {
+                return res.status(404).json({ error: 'Categoría no encontrada' });
+            }
+
+            res.json({ mensaje: 'Categoría eliminada correctamente' });
+        } catch (error) {
+            console.error('Error al eliminar categoría:', error);
+            res.status(500).json({ error: 'Error al eliminar categoría' });
+        }
+    },
+
+    // Obtener subcategorías de una categoría específica
+    async obtenerSubcategorias(req, res) {
+        try {
+            const { id } = req.params;
+            const subcategorias = await CategoriasModel.obtenerSubcategorias(id);
+            res.json(subcategorias);
+        } catch (error) {
+            console.error('Error al obtener subcategorías:', error);
+            res.status(500).json({ error: 'Error al obtener subcategorías' });
+        }
+    }
 };
