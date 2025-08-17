@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Categorías</title>
+  <link rel="stylesheet" href="categorias.css">
+</head>
+<body>
+  <div class="contenedor">
+
+    <h1>📂 Gestión de Categorías</h1>
+
+    <!-- Formulario -->
+    <section class="formulario">
+      <h2>Nueva Categoría</h2>
+      <form id="form-nueva-categoria">
+        <div class="campo">
+          <label for="nombre">Nombre:</label>
+          <input type="text" id="nombre" required>
+        </div>
+
+        <div class="campo">
+          <label for="categoria_padre_id">Categoría padre:</label>
+          <select id="categoria_padre_id">
+            <option value="">Ninguna (Categoría raíz)</option>
+          </select>
+        </div>
+
+        <button type="submit">➕ Crear Categoría</button>
+      </form>
+      <p id="msg-categoria" class="mensaje"></p>
+    </section>
+
+    <!-- Listado -->
+    <section class="listado">
+    
+      <h2> 🌳 orden jerarquico </h2>
+      <ul id="lista-categorias-jerarquicas"></ul>
+      
+    </section>
+
+  </div>
+
+  <script src="config.js"></script>
+  <script src="categorias.js"></script>
+</body>
+</html>

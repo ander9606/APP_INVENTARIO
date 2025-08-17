@@ -16,4 +16,5 @@ function construirArbol(categorias) {
     return raices;
 }
 
-module.exports = { construirArbol };
+const construirJerarquia = construirArbol
+module.exports = { construirArbol, construirJerarquia };

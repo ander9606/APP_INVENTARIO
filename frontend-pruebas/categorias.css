@@ -1,0 +1,115 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f5f5f5;
+}
+
+.contenedor {
+  max-width: 700px;
+  margin: 30px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 3px 3px 10px rgba(0,0,0,0.1);
+}
+
+h1, h2 {
+  color: #333;
+}
+
+.formulario, .listado {
+  margin-bottom: 20px;
+}
+
+.campo {
+  margin-bottom: 10px;
+}
+
+label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+input, select, button {
+  padding: 8px;
+  width: 100%;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+.mensaje {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.mensaje.ok {
+  color: green;
+}
+.mensaje.error {
+  color: red;
+}
+
+/* ========================= */
+/* Estilos de listado simple */
+/* ========================= */
+.listado ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+.listado li {
+  padding: 5px 0;
+  color: #444;
+}
+
+/* =============================== */
+/* Estilos de listado jerárquico 🌳 */
+/* =============================== */
+#lista-categorias-jerarquicas {
+  margin-top: 10px;
+  padding-left: 15px;
+  border-left: 2px solid #ddd;
+}
+
+#lista-categorias-jerarquicas ul {
+  list-style: none;
+  padding-left: 20px;
+  margin: 5px 0;
+  border-left: 1px dashed #ccc;
+}
+
+#lista-categorias-jerarquicas li {
+  position: relative;
+  margin: 6px 0;
+  padding: 4px 8px;
+  background: #f9f9f9;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+#lista-categorias-jerarquicas li:hover {
+  background: #eef6ff;
+}
+
+#lista-categorias-jerarquicas li::before {
+  content: "📂";
+  margin-right: 8px;
+}
+
+#lista-categorias-jerarquicas li ul li::before {
+  content: "📄";
+}

@@ -9,7 +9,6 @@ const CategoriasModel = {
             SELECT 
             c.id,
             c.nombre,
-            c.descripcion,
             c.categoria_padre_id,
             cp.nombre AS categoria_padre_nombre
             FROM categorias c
@@ -25,20 +24,20 @@ const CategoriasModel = {
         return rows[0];
     },
 
-    async crear ({nombre, descripcion, categoria_padre_id=null}) {
+    async crear ({nombre,  categoria_padre_id=null}) {
         const query = `
-        INSERT INTO categorias (nombre, descripcion, categoria_padre_id)
-        VALUES (?, ?, ?)`;
-        const [result] = await db.execute(query, [nombre, descripcion, categoria_padre_id]);
-        return {id: result.insertId, nombre, descripcion, categoria_padre_id};
+        INSERT INTO categorias (nombre,  categoria_padre_id)
+        VALUES (?, ?)`;
+        const [result] = await db.execute(query, [nombre,  categoria_padre_id]);
+        return {id: result.insertId, nombre, categoria_padre_id};
     },
 
-    async actualizar(id, {nombre, descripcion, categoria_padre_id}) {
+    async actualizar(id, {nombre, categoria_padre_id}) {
         const query = `
         UPDATE categorias
-        SET nombre = ?, descripcion = ?, categoria_padre_id = ?
+        SET nombre = ?, categoria_padre_id = ?
         WHERE id = ?`;
-        await db.execute(query, [nombre, descripcion, categoria_padre_id, id]);
+        await db.execute(query, [nombre,  categoria_padre_id, id]);
         return {id, nombre, descripcion, categoria_padre_id};
     },
 

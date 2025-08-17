@@ -1,6 +1,6 @@
 // controllers/categoriasController.js
 const CategoriasModel = require('../models/CategoriasModel');
-const { construirJerarquia } = require('../utils/categoriasUtils');
+const { construirJerarquia } = require('../utils/construirArbol');
 
 module.exports = {
     // Obtener todas las categorías planas
