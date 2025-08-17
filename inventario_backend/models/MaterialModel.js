@@ -1,4 +1,3 @@
-const { crearMaterial } = require('../controllers/materialController');
 const db = require('./db'); // Importa la conexión desde models/db.js
 
 const MaterialModel = {

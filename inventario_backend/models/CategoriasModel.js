@@ -1,6 +1,5 @@
 // models/CategoriasModel.js
 const db = require('./db');
-const { actualizar } = require('./ElementoModel');
 
 
 const CategoriasModel = {
@@ -38,7 +37,7 @@ const CategoriasModel = {
         SET nombre = ?, categoria_padre_id = ?
         WHERE id = ?`;
         await db.execute(query, [nombre,  categoria_padre_id, id]);
-        return {id, nombre, descripcion, categoria_padre_id};
+        return {id, nombre,      categoria_padre_id};
     },
 
     async eliminar(id) {

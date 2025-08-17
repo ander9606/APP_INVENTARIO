@@ -29,15 +29,14 @@ module.exports = {
     // Crear nueva categoría o subcategoría
     async crearCategoria(req, res) {
         try {
-            const { nombre, descripcion, categoria_padre_id } = req.body;
+            const { nombre, categoria_padre_id,padre_id } = req.body;
             if (!nombre) {
                 return res.status(400).json({ error: 'El nombre es obligatorio' });
             }
 
             const nuevaCategoria = await CategoriasModel.crear({
                 nombre,
-                descripcion,
-                categoria_padre_id: categoria_padre_id || null
+                categoria_padre_id: categoria_padre_id || padre_id || null
             });
 
             res.status(201).json(nuevaCategoria);
