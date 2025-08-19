@@ -42,8 +42,8 @@ const CategoriasModel = {
 
     async eliminar(id) {
         const query = `DELETE FROM categorias WHERE id = ?`;
-        await db.execute(query, [id]);
-        return {mensaje: 'Categoría eliminada'};
+        const [resultado]=await db.execute(query, [id]);
+        return resultado;
     },
 }; 
 

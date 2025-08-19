@@ -46,22 +46,34 @@ module.exports = {
         }
     },
 
-    // Eliminar categoría
-    async eliminarCategoria(req, res) {
-        try {
-            const { id } = req.params;
-            const resultado = await CategoriasModel.eliminar(id);
+// Eliminar categoría
+// 🗑️ Eliminar categoría y sus hijos
+async eliminarCategoria(req, res) {
+    const { id } = req.params;
 
-            if (resultado.affectedRows === 0) {
-                return res.status(404).json({ error: 'Categoría no encontrada' });
-            }
+    try {
+        // Primero eliminamos hijos recursivamente
+        await eliminarHijos(id);
 
-            res.json({ mensaje: 'Categoría eliminada correctamente' });
-        } catch (error) {
-            console.error('Error al eliminar categoría:', error);
-            res.status(500).json({ error: 'Error al eliminar categoría' });
+        // Luego eliminamos la categoría padre
+        await pool.query("DELETE FROM categorias WHERE id = ?", [id]);
+
+        res.json({ mensaje: "Categoría y sus hijos eliminados" });
+    } catch (error) {
+        console.error("Error eliminando categoría:", error);
+        res.status(500).json({ error: "Error eliminando categoría" });
+    }
+
+    // Función recursiva
+    async function eliminarHijos(categoriaId) {
+        const [hijos] = await pool.query("SELECT id FROM categorias WHERE categoria_padre_id = ?", [categoriaId]);
+
+        for (const hijo of hijos) {
+            await eliminarHijos(hijo.id); // elimina subhijos
+            await pool.query("DELETE FROM categorias WHERE id = ?", [hijo.id]);
         }
-    },
+    }
+},
 
     // Obtener subcategorías de una categoría específica
     async obtenerSubcategorias(req, res) {
