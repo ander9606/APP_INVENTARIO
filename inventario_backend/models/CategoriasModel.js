@@ -1,50 +1,36 @@
 // models/CategoriasModel.js
-const db = require('./db');
-
+const pool = require('./db'); // ✅ conexión centralizada
 
 const CategoriasModel = {
     async obtenerTodas() {
-        const query = `
-            SELECT 
-            c.id,
-            c.nombre,
-            c.categoria_padre_id,
-            cp.nombre AS categoria_padre_nombre
-            FROM categorias c
-            LEFT JOIN categorias cp ON c.categoria_padre_id = cp.id
-            ORDER BY c.categoria_padre_id, c.nombre`;
-        const [rows] = await db.query(query);
+        const [rows] = await pool.query("SELECT * FROM categorias");
         return rows;
     },
 
-    async obtenerPorId(id){
-        const query = `SELECT * FROM categorias WHERE id = ?`;
-        const [rows] = await db.execute(query, [id]);
+    async obtenerPorId(id) {
+        const [rows] = await pool.query("SELECT * FROM categorias WHERE id = ?", [id]);
         return rows[0];
     },
 
-    async crear ({nombre,  categoria_padre_id=null}) {
-        const query = `
-        INSERT INTO categorias (nombre,  categoria_padre_id)
-        VALUES (?, ?)`;
-        const [result] = await db.execute(query, [nombre,  categoria_padre_id]);
-        return {id: result.insertId, nombre, categoria_padre_id};
+    async obtenerSubcategorias(categoriaId) {
+        const [rows] = await pool.query(
+            "SELECT * FROM categorias WHERE categoria_padre_id = ?",
+            [categoriaId]
+        );
+        return rows;
     },
 
-    async actualizar(id, {nombre, categoria_padre_id}) {
-        const query = `
-        UPDATE categorias
-        SET nombre = ?, categoria_padre_id = ?
-        WHERE id = ?`;
-        await db.execute(query, [nombre,  categoria_padre_id, id]);
-        return {id, nombre,      categoria_padre_id};
+    async crear({ nombre, categoria_padre_id = null }) {
+        const [result] = await pool.query(
+            "INSERT INTO categorias (nombre, categoria_padre_id) VALUES (?, ?)",
+            [nombre, categoria_padre_id]
+        );
+        return { id: result.insertId, nombre, categoria_padre_id };
     },
 
     async eliminar(id) {
-        const query = `DELETE FROM categorias WHERE id = ?`;
-        const [resultado]=await db.execute(query, [id]);
-        return resultado;
-    },
-}; 
+        await pool.query("DELETE FROM categorias WHERE id = ?", [id]);
+    }
+};
 
 module.exports = CategoriasModel;

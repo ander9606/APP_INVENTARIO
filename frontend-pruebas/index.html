@@ -22,8 +22,16 @@
             <h2>Registrar Nuevo Elemento</h2>
             <form id="form-elemento">
                 
-                <label for="categoria">Categoría:</label>
-                <select id="categoria" name="categoria" required></select>
+                <!--seleccion de categorias-->
+                <label for="categoria">Categoria</label>
+                <select name="categoria" id="categoria" required>
+                    <option value="">Seleccione una categoria</option>
+                </select>
+                <!-- seleccion de subcategoria -->
+                <label for="subcategoria">Subcategoría</label>
+                <select name="subcategoria" id="subcategoria" disabled>
+                    <option value="">Seleccione una subcategoría</option>
+                </select>
                 
                 <label for="nombre">Nombre del Elemento:</label>
                 <input type="text" id="nombre" name="nombre" required>

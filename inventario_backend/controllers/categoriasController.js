@@ -14,7 +14,7 @@ module.exports = {
         }
     },
 
-    // Obtener todas las categorías en forma jerárquica (árbol)
+    // Obtener todas las categorías en forma jerárquica
     async obtenerCategoriasJerarquicas(req, res) {
         try {
             const categorias = await CategoriasModel.obtenerTodas();
@@ -29,7 +29,8 @@ module.exports = {
     // Crear nueva categoría o subcategoría
     async crearCategoria(req, res) {
         try {
-            const { nombre, categoria_padre_id,padre_id } = req.body;
+            const { nombre, categoria_padre_id, padre_id } = req.body;
+
             if (!nombre) {
                 return res.status(400).json({ error: 'El nombre es obligatorio' });
             }
@@ -46,34 +47,30 @@ module.exports = {
         }
     },
 
-// Eliminar categoría
-// 🗑️ Eliminar categoría y sus hijos
-async eliminarCategoria(req, res) {
-    const { id } = req.params;
+    // Eliminar categoría y sus hijos recursivamente
+    async eliminarCategoria(req, res) {
+        const { id } = req.params;
 
-    try {
-        // Primero eliminamos hijos recursivamente
-        await eliminarHijos(id);
+        try {
+            await eliminarHijos(id);
+            await CategoriasModel.eliminar(id);
 
-        // Luego eliminamos la categoría padre
-        await pool.query("DELETE FROM categorias WHERE id = ?", [id]);
-
-        res.json({ mensaje: "Categoría y sus hijos eliminados" });
-    } catch (error) {
-        console.error("Error eliminando categoría:", error);
-        res.status(500).json({ error: "Error eliminando categoría" });
-    }
-
-    // Función recursiva
-    async function eliminarHijos(categoriaId) {
-        const [hijos] = await pool.query("SELECT id FROM categorias WHERE categoria_padre_id = ?", [categoriaId]);
-
-        for (const hijo of hijos) {
-            await eliminarHijos(hijo.id); // elimina subhijos
-            await pool.query("DELETE FROM categorias WHERE id = ?", [hijo.id]);
+            res.json({ mensaje: "Categoría y sus hijos eliminados" });
+        } catch (error) {
+            console.error("Error eliminando categoría:", error);
+            res.status(500).json({ error: "Error eliminando categoría" });
         }
-    }
-},
+
+        // 🔁 Función recursiva
+        async function eliminarHijos(categoriaId) {
+            const hijos = await CategoriasModel.obtenerSubcategorias(categoriaId);
+
+            for (const hijo of hijos) {
+                await eliminarHijos(hijo.id); // eliminar recursivo
+                await CategoriasModel.eliminar(hijo.id);
+            }
+        }
+    },
 
     // Obtener subcategorías de una categoría específica
     async obtenerSubcategorias(req, res) {
