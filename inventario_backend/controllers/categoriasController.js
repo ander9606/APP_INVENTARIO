@@ -6,7 +6,7 @@ module.exports = {
     // Obtener todas las categorías planas
     async obtenerCategorias(req, res) {
         try {
-            const categorias = await CategoriasModel.obtenerTodas();
+            const categorias = await CategoriasModel.obtenerSoloPadres();
             res.json(categorias);
         } catch (error) {
             console.error('Error al obtener categorías:', error);

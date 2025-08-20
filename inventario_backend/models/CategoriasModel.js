@@ -12,20 +12,27 @@ const CategoriasModel = {
         return rows[0];
     },
 
+    async obtenerSoloPadres(){
+        const [rows] = await pool.query(`SELECT * FROM categorias WHERE padre_id IS NULL`);
+        return rows;
+    },
+
     async obtenerSubcategorias(categoriaId) {
+        // ✅ CAMBIO: Usamos 'padre_id' en lugar de 'categoria_padre_id'
         const [rows] = await pool.query(
-            "SELECT * FROM categorias WHERE categoria_padre_id = ?",
+            "SELECT * FROM categorias WHERE padre_id = ?",
             [categoriaId]
         );
         return rows;
     },
 
-    async crear({ nombre, categoria_padre_id = null }) {
+    async crear({ nombre, padre_id = null }) {
+        // ✅ CAMBIO: Usamos 'padre_id' en la consulta y en el objeto
         const [result] = await pool.query(
-            "INSERT INTO categorias (nombre, categoria_padre_id) VALUES (?, ?)",
-            [nombre, categoria_padre_id]
+            "INSERT INTO categorias (nombre, padre_id) VALUES (?, ?)",
+            [nombre, padre_id]
         );
-        return { id: result.insertId, nombre, categoria_padre_id };
+        return { id: result.insertId, nombre, padre_id };
     },
 
     async eliminar(id) {
