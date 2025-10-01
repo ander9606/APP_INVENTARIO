@@ -1,15 +1,16 @@
-const db = require('./db'); // Importa la conexión desde models/db.js
+// ============================================
+// models/UnidadModel.js
+// ============================================
 
+import db from './db.js';
 
 const UnidadModel = {
-    // Obtener todas las unidades del inventario
-    obtenerTodos: async () => {
-      const [resultados] = await db.query('SELECT * FROM unidades');
-      return resultados;
+    async obtenerTodos() {
+        const [resultados] = await db.query('SELECT * FROM unidades ORDER BY nombre');
+        return resultados;
     },
 
-    // Crear una nueva unidad
-    crear: async ({ nombre, abreviatura, tipo }) => {
+    async crear({ nombre, abreviatura, tipo }) {
         const [resultado] = await db.query(
             'INSERT INTO unidades (nombre, abreviatura, tipo) VALUES (?, ?, ?)',
             [nombre, abreviatura, tipo]
@@ -18,4 +19,4 @@ const UnidadModel = {
     }
 };
 
-module.exports = UnidadModel;
+export default UnidadModel;

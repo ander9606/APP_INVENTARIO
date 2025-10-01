@@ -1,8 +1,13 @@
-const express = require('express');
+// ============================================
+// routes/materiales.js
+// ============================================
+
+import express from 'express';
+import * as materialController from '../controllers/materialController.js';
+
 const router = express.Router();
-const materialController = require('../controllers/materialController');
 
-router.get('/', materialController.obtenerMateriales); // Obtener todos los materiales
-router.post('/', materialController.crearMaterial); // Crear un nuevo material
+router.get('/', materialController.obtenerMateriales);
+router.post('/', materialController.crearMaterial);
 
-module.exports = router;
+export default router;

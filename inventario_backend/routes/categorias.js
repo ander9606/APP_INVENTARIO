@@ -1,21 +1,19 @@
+// ============================================
 // routes/categorias.js
-const express = require('express');
+// ============================================
+
+import express from 'express';
+import * as categoriasController from '../controllers/categoriasController.js';
+
 const router = express.Router();
-const categoriasController = require('../controllers/categoriasController');
 
-// Obtener todas las categorías en listado plano
-router.get('/', categoriasController.obtenerCategorias);
-
-// Obtener todas las categorías en jerarquía (árbol)
+// Rutas específicas primero
 router.get('/jerarquia', categoriasController.obtenerCategoriasJerarquicas);
-
-// Obtener subcategorías de una categoría específica
 router.get('/:id/subcategorias', categoriasController.obtenerSubcategorias);
 
-// Crear nueva categoría o subcategoría
+// Rutas generales después
+router.get('/', categoriasController.obtenerCategorias);
 router.post('/', categoriasController.crearCategoria);
-
-// Eliminar una categoría por ID
 router.delete('/:id', categoriasController.eliminarCategoria);
 
-module.exports = router;
+export default router;

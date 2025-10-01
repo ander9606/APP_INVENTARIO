@@ -1,15 +1,13 @@
 // routes/elementos.js
-const express = require('express');
+import express from 'express';
+import * as elementoController from '../controllers/elementoController.js';
+
 const router = express.Router();
-const elementoController = require('../controllers/elementoController');
 
 router.get('/', elementoController.obtenerElementos);
 router.post('/', elementoController.crearElemento);
+router.get('/:id', elementoController.detalleElemento);
 router.put('/:id', elementoController.actualizarElemento);
 router.delete('/:id', elementoController.eliminarElemento);
 
-//detalle
-router.get('/:id/detalle', elementoController.detalleElemento);
-
-
-module.exports = router;
+export default router;

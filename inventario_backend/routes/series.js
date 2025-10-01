@@ -1,24 +1,24 @@
-const express = require('express');
+// ============================================
+// routes/series.js
+// ============================================
+
+import express from 'express';
+import * as serieController from '../controllers/serieController.js';
+
 const router = express.Router();
-const serieController = require('../controllers/serieController');
 
-// Crear una nueva serie
-router.post('/', serieController.crearSerie);
-
-// Obtener todas las series de un elemento por su ID
-router.get('/:id_elemento', serieController.obtenerSeriesPorElemento);
-
-// Actualizar una serie por su ID
-router.put('/:id', serieController.actualizarSerie);
-
-// Eliminar una serie por su ID
-router.delete('/:id', serieController.eliminarSerie);
-
-
+// Test endpoint
 router.get('/test', (req, res) => {
-  console.log('📩 Ruta /api/series/test llamada');
-  res.json({ mensaje: 'Ruta de series funciona correctamente' });
+    res.json({ 
+        success: true, 
+        message: 'Ruta de series funciona correctamente' 
+    });
 });
 
+// IMPORTANTE: La ruta más específica primero
+router.get('/elemento/:id_elemento', serieController.obtenerSeriesPorElemento);
+router.post('/', serieController.crearSerie);
+router.put('/:id', serieController.actualizarSerie);
+router.delete('/:id', serieController.eliminarSerie);
 
-module.exports = router;
+export default router;

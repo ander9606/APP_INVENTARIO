@@ -1,145 +1,300 @@
-const ElementoModel = require('../models/ElementoModel');
+// controllers/elementoController.js
+import ElementoModel from '../models/ElementoModel.js';
 
-// Obtener todos los elementos del inventario
-exports.obtenerElementos = async (req, res) => {
-  try {
-    const elementos = await ElementoModel.obtenerTodos();
-    res.json(elementos);
-  } catch (error) {
-  console.error('Error al guardar:', error.message, error.stack);
-  res.status(500).json({ error: 'Error al guardar', detalle: error.message });
-}
-
-};
-
-// crear un nuevo elemento
-exports.crearElemento = async (req, res) => {
-  const {
-    nombre,
-    descripcion,
-    categoria_id,
-    material_id,
-    unidad_id,
-    cantidad,
-    lleva_serie,
-    estado = 'bueno',
-    ubicacion,
-    series = []
-  } = req.body;
-
-  console.log(`📨 Recibido en backend: ${JSON.stringify(req.body)} `);
-
-  // ✅ Validación: si lleva serie, la cantidad debe coincidir con el número de series enviadas
-  if (lleva_serie && series.length !== cantidad) {
-    return res.status(400).json({
-      error: `La cantidad (${cantidad}) no coincide con la cantidad de series (${series.length})`
-    });
-  }
-
-  let elemento_id; // ✅ Definimos fuera del try para poder usarlo más abajo
-
-  try {
-    // 📌 Insertar elemento
-    const resultado = await ElementoModel.crear({
-      nombre,
-      descripcion,
-      cantidad,
-      requiere_series: lleva_serie ? 1 : 0,
-      categoria_id,
-      material_id,
-      unidad_id,
-      estado,
-      ubicacion: lleva_serie ? null : ubicacion // Si lleva serie, no asignamos ubicación aquí
-    });
-
-    elemento_id = resultado.insertId; // ✅ Guardamos el insertId en la variable definida antes
-    console.log(`✅ Elemento creado con ID: ${elemento_id}`);
-  } catch (error) {
-    console.error('❌ Error al insertar en elementos:', error.message || error);
-    return res.status(500).json({ error: 'Error al insertar en elementos', detalle: error.message });
-  }
-
-  // 📌 Si lleva serie, insertar series
-  if (lleva_serie && series.length > 0) {
+/**
+ * Obtener todos los elementos del inventario
+ */
+export const obtenerElementos = async (req, res, next) => {
     try {
-      const seriesConFechaYUbicacion = series.map(s => ({
-        numero_serie: s.numero_serie,
-        estado: s.estado || 'nuevo',
-        fecha_ingreso: new Date(), // ✅ Fecha automática
-        ubicacion: s.ubicacion || null
-      }));
-
-      console.log('📦 Insertando series:', JSON.stringify(seriesConFechaYUbicacion, null, 2));
-
-      // ✅ Usar elemento_id correcto (antes había error de nombre)
-      await ElementoModel.crearSeriesPorElemento(elemento_id, seriesConFechaYUbicacion);
-
-      // ✅ return para que no siga ejecutando y no mande dos respuestas
-      return res.status(201).json({
-        mensaje: `Elemento creado exitosamente con ID: ${elemento_id}`,
-        id: elemento_id
-      });
+        const elementos = await ElementoModel.obtenerTodos();
+        
+        res.json({
+            success: true,
+            data: elementos,
+            count: elementos.length
+        });
     } catch (error) {
-      console.error('❌ Error al insertar series:', error.message || error);
-      return res.status(500).json({ error: 'Error al insertar series', detalle: error.message });
+        console.error('Error al obtener elementos:', error);
+        next(error); // Pasar al middleware de errores
     }
-  }
-
-  // 📌 Si no lleva serie, responder aquí
-  return res.status(201).json({
-    mensaje: `Elemento creado exitosamente con ID: ${elemento_id}`,
-    id: elemento_id
-  });
 };
 
+/**
+ * Crear un nuevo elemento con validaciones robustas
+ */
+export const crearElemento = async (req, res, next) => {
+    const {
+        nombre,
+        descripcion,
+        categoria_id,
+        material_id,
+        unidad_id,
+        cantidad,
+        requiere_series,
+        estado = 'bueno',
+        ubicacion,
+        series = []
+    } = req.body;
 
+    try {
+        // Validaciones de negocio
+        if (!nombre || nombre.trim().length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'El nombre es obligatorio'
+            });
+        }
 
-// Actualizar un elemento por ID
-exports.actualizarElemento = async (req, res) => {
-  try {
+        if (!cantidad || cantidad < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'La cantidad debe ser un número mayor o igual a 0'
+            });
+        }
+
+        // Validar estados permitidos
+        const estadosPermitidos = ['nuevo', 'bueno', 'mantenimiento', 'prestado', 'dañado', 'agotado'];
+        if (!estadosPermitidos.includes(estado)) {
+            return res.status(400).json({
+                success: false,
+                error: `Estado inválido. Debe ser uno de: ${estadosPermitidos.join(', ')}`
+            });
+        }
+
+        // Si requiere series, validar coherencia
+        if (requiere_series) {
+            if (series.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Si el elemento requiere series, debe proporcionar al menos una'
+                });
+            }
+
+            if (series.length !== cantidad) {
+                return res.status(400).json({
+                    success: false,
+                    error: `La cantidad (${cantidad}) debe coincidir con el número de series proporcionadas (${series.length})`
+                });
+            }
+
+            // Validar que todas las series tengan numero_serie
+            for (let i = 0; i < series.length; i++) {
+                if (!series[i].numero_serie || series[i].numero_serie.trim().length === 0) {
+                    return res.status(400).json({
+                        success: false,
+                        error: `La serie en posición ${i + 1} requiere un número de serie válido`
+                    });
+                }
+            }
+
+            // Validar números de serie únicos
+            const numerosSerieSet = new Set(series.map(s => s.numero_serie.trim().toLowerCase()));
+            if (numerosSerieSet.size !== series.length) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Los números de serie deben ser únicos dentro del elemento'
+                });
+            }
+        }
+
+        // Si no requiere series pero se pasa ubicación vacía, usar null
+        const ubicacionFinal = requiere_series ? null : (ubicacion || null);
+
+        const resultado = await ElementoModel.crear({
+            nombre: nombre.trim(),
+            descripcion: descripcion ? descripcion.trim() : null,
+            cantidad: parseInt(cantidad, 10),
+            requiere_series: requiere_series ? 1 : 0,
+            categoria_id: categoria_id || null,
+            material_id: material_id || null,
+            unidad_id: unidad_id || null,
+            estado,
+            ubicacion: ubicacionFinal,
+            series: requiere_series ? series : []
+        });
+
+        console.log(`✅ Elemento creado con ID: ${resultado.insertId}`);
+
+        res.status(201).json({
+            success: true,
+            message: 'Elemento creado exitosamente',
+            data: {
+                id: resultado.insertId,
+                nombre: nombre.trim(),
+                cantidad: parseInt(cantidad, 10),
+                requiere_series: !!requiere_series
+            }
+        });
+    } catch (error) {
+        console.error('Error al crear elemento:', error);
+        
+        // Si es un error de constraint de BD (ej. FK inválida)
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(400).json({
+                success: false,
+                error: 'Uno o más IDs de referencia (categoría, material, unidad) no son válidos'
+            });
+        }
+
+        next(error);
+    }
+};
+
+/**
+ * Actualizar un elemento existente
+ */
+export const actualizarElemento = async (req, res, next) => {
     const { id } = req.params;
     const datosActualizados = req.body;
-    const resultado = await ElementoModel.actualizar(id, datosActualizados);
-    res.json({ mensaje: 'Elemento actualizado exitosamente' });
-  } catch (error) {
-    console.error('Error al actualizar elemento:', error);
-    res.status(500).json({ error: 'Error al actualizar el elemento' });
-  }
-};
 
-// Eliminar un elemento por ID
-exports.eliminarElemento = async (req, res) => {
-  try {
-    const { id } = req.params;
-    await ElementoModel.eliminar(id);
-    res.json({ mensaje: 'Elemento eliminado correctamente' });
-  } catch (error) {
-    console.error('Error al eliminar elemento:', error);
-    res.status(500).json({ error: 'Error al eliminar el elemento' });
-  }
-};
+    try {
+        // Verificar que el elemento existe
+        const elementoExistente = await ElementoModel.obtenerPorId(id);
+        if (!elementoExistente) {
+            return res.status(404).json({
+                success: false,
+                error: 'Elemento no encontrado'
+            });
+        }
 
-// detalle de elemento + series
+        // Validar nombre si se proporciona
+        if (datosActualizados.nombre !== undefined) {
+            if (!datosActualizados.nombre || datosActualizados.nombre.trim().length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'El nombre no puede estar vacío'
+                });
+            }
+            datosActualizados.nombre = datosActualizados.nombre.trim();
+        }
 
-exports.detalleElemento = async (req, res) => {
-  const { id } = req.params;
+        // Validar cantidad si se proporciona
+        if (datosActualizados.cantidad !== undefined) {
+            const cantidad = parseInt(datosActualizados.cantidad, 10);
+            if (isNaN(cantidad) || cantidad < 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'La cantidad debe ser un número mayor o igual a 0'
+                });
+            }
+            datosActualizados.cantidad = cantidad;
+        }
 
-  const queryElemento = 'SELECT * FROM elementos WHERE id = ?';
-  const querySeries = 'SELECT * FROM series WHERE id_elemento = ?';
+        // Validar estado si se proporciona
+        if (datosActualizados.estado) {
+            const estadosPermitidos = ['nuevo', 'bueno', 'mantenimiento', 'prestado', 'dañado', 'agotado'];
+            if (!estadosPermitidos.includes(datosActualizados.estado)) {
+                return res.status(400).json({
+                    success: false,
+                    error: `Estado inválido. Debe ser uno de: ${estadosPermitidos.join(', ')}`
+                });
+            }
+        }
 
-  db.query(queryElemento, [id], (err, elementos) => {
-    if (err) return res.status(500).json({ error: 'Error al obtener el elemento' });
-    if (elementos.length === 0) return res.status(404).json({ error: 'Elemento no encontrado' });
+        // Si cambia requiere_series y hay series, validar coherencia
+        if (datosActualizados.requiere_series !== undefined) {
+            datosActualizados.requiere_series = datosActualizados.requiere_series ? 1 : 0;
+            
+            if (datosActualizados.requiere_series && datosActualizados.series) {
+                const cantidad = datosActualizados.cantidad || elementoExistente.cantidad;
+                if (datosActualizados.series.length !== cantidad) {
+                    return res.status(400).json({
+                        success: false,
+                        error: `La cantidad debe coincidir con el número de series (${datosActualizados.series.length})`
+                    });
+                }
+            }
+        }
 
-    const elemento = elementos[0];
+        await ElementoModel.actualizar(id, datosActualizados);
 
-    if (elemento.requiere_series){
-      db.query(querySeries, [id], (err, series) => {
-        if (err) return res.status(500).json({ error: 'Error al obtener las series' });
-        res.json({ ...elemento, series });
-      });
-    }else {
-      res.json(elemento)
+        console.log(`✅ Elemento ${id} actualizado`);
+
+        res.json({
+            success: true,
+            message: 'Elemento actualizado exitosamente',
+            data: { id }
+        });
+    } catch (error) {
+        console.error('Error al actualizar elemento:', error);
+
+        if (error.code === 'ER_NO_REFERENCED_ROW_2') {
+            return res.status(400).json({
+                success: false,
+                error: 'Uno o más IDs de referencia no son válidos'
+            });
+        }
+
+        next(error);
     }
-  });  
+};
+
+/**
+ * Eliminar un elemento por ID
+ */
+export const eliminarElemento = async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        // Verificar que existe antes de eliminar
+        const elemento = await ElementoModel.obtenerPorId(id);
+        if (!elemento) {
+            return res.status(404).json({
+                success: false,
+                error: 'Elemento no encontrado'
+            });
+        }
+
+        await ElementoModel.eliminar(id);
+
+        console.log(`🗑️ Elemento ${id} eliminado`);
+
+        res.json({
+            success: true,
+            message: 'Elemento eliminado correctamente',
+            data: { id }
+        });
+    } catch (error) {
+        console.error('Error al eliminar elemento:', error);
+        next(error);
+    }
+};
+
+/**
+ * Obtener detalle completo de un elemento (con series si aplica)
+ */
+export const detalleElemento = async (req, res, next) => {
+    const { id } = req.params;
+
+    try {
+        const elemento = await ElementoModel.obtenerPorId(id);
+        
+        if (!elemento) {
+            return res.status(404).json({
+                success: false,
+                error: 'Elemento no encontrado'
+            });
+        }
+
+        // Si requiere series, incluirlas en la respuesta
+        if (elemento.requiere_series) {
+            const series = await ElementoModel.obtenerSeriesPorElemento(id);
+            
+            res.json({
+                success: true,
+                data: {
+                    ...elemento,
+                    series
+                }
+            });
+        } else {
+            res.json({
+                success: true,
+                data: elemento
+            });
+        }
+    } catch (error) {
+        console.error('Error al obtener detalle del elemento:', error);
+        next(error);
+    }
 };

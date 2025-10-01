@@ -1,39 +1,46 @@
+// ============================================
 // models/SerieModel.js
-const db = require('./db');
+// ============================================
+
+import db from './db.js';
 
 const SerieModel = {
-  // Obtener todas las series de un elemento
-obtenerPorElemento: async (idElemento) => {
-  console.log('🔍 Buscando series con id_elemento =', idElemento);
-  const [filas] = await db.query(
-    'SELECT * FROM series WHERE id_elemento = ?',
-    [idElemento]
-  );
-  return filas;
-},
+    async obtenerPorElemento(idElemento) {
+        const [filas] = await db.query(
+            'SELECT * FROM series WHERE id_elemento = ? ORDER BY numero_serie',
+            [idElemento]
+        );
+        return filas;
+    },
 
-  // Crear una nueva serie
-  crear: async ({ id_elemento, numero_serie, estado, fecha_ingreso }) => {
-    const [resultado] = await db.query(
-      'INSERT INTO series (id_elemento, numero_serie, estado, fecha_ingreso) VALUES (?, ?, ?, ?)',
-      [id_elemento, numero_serie, estado, fecha_ingreso]
-    );
-    return resultado;
-  },
+    async obtenerPorId(id) {
+        const [rows] = await db.query(
+            'SELECT * FROM series WHERE id = ?',
+            [id]
+        );
+        return rows[0];
+    },
 
-  // Actualizar una serie por ID
-  actualizar: async (id, { numero_serie, estado, fecha_ingreso }) => {
-    const [resultado] = await db.query(
-      'UPDATE series SET numero_serie = ?, estado = ?, fecha_ingreso = ? WHERE id = ?',
-      [numero_serie, estado, fecha_ingreso, id]
-    );
-    return resultado;
-  },
+    async crear({ id_elemento, numero_serie, estado, fecha_ingreso, ubicacion }) {
+        const [resultado] = await db.query(
+            'INSERT INTO series (id_elemento, numero_serie, estado, fecha_ingreso, ubicacion) VALUES (?, ?, ?, ?, ?)',
+            [id_elemento, numero_serie, estado, fecha_ingreso, ubicacion]
+        );
+        return resultado;
+    },
 
-  // Eliminar una serie por ID
-  eliminar: async (id) => {
-    await db.query('DELETE FROM series WHERE id = ?', [id]);
-  }
+    async actualizar(id, { numero_serie, estado, fecha_ingreso, ubicacion }) {
+        const [resultado] = await db.query(
+            'UPDATE series SET numero_serie = ?, estado = ?, fecha_ingreso = ?, ubicacion = ? WHERE id = ?',
+            [numero_serie, estado, fecha_ingreso, ubicacion, id]
+        );
+        return resultado;
+    },
+
+    async eliminar(id) {
+        const [resultado] = await db.query('DELETE FROM series WHERE id = ?', [id]);
+        return resultado;
+    }
 };
 
-module.exports = SerieModel;
+export default SerieModel;

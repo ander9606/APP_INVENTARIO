@@ -1,10 +1,13 @@
-const express = require('express');
+// ============================================
+// routes/unidades.js
+// ============================================
+
+import express from 'express';
+import * as unidadController from '../controllers/unidadController.js';
+
 const router = express.Router();
-const unidadController = require('../controllers/unidadController');
 
-// Crear una nueva unidad
-router.post('/', unidadController.crearUnidad);
-// Obtener todas las unidades
 router.get('/', unidadController.obtenerUnidades);
+router.post('/', unidadController.crearUnidad);
 
-module.exports = router;
+export default router;

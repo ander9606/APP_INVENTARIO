@@ -1,17 +1,26 @@
-// models/db.js
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
-// Importamos el paquete mysql2 con soporte para promesas
-const mysql = require('mysql2/promise');
+dotenv.config();
 
-// Creamos una conexión tipo pool (mejor para múltiples consultas)
 const db = mysql.createPool({
-  host: process.env.DB_HOST,     // Dirección del servidor MySQL
-  user: process.env.DB_USER,     // Usuario de acceso
-  password: process.env.DB_PASSWORD, // Contraseña del usuario
-  database: process.env.DB_NAME, // Nombre de la base de datos
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
 });
 
-module.exports = db;
+// Test de conexión al iniciar
+db.getConnection()
+    .then(connection => {
+        console.log('✅ Conexión a la base de datos establecida');
+        connection.release();
+    })
+    .catch(err => {
+        console.error('❌ Error conectando a la base de datos:', err.message);
+    });
+
+export default db;

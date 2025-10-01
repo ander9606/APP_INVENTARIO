@@ -1,21 +1,22 @@
-const db = require('./db'); // Importa la conexión desde models/db.js
+// ============================================
+// models/MaterialModel.js
+// ============================================
+
+import db from './db.js';
 
 const MaterialModel = {
-    // Obtener todos los materiales del inventario
-
-    obtenerTodos: async () => {
-        const [resultados] = await db.query('SELECT * FROM materiales');
+    async obtenerTodos() {
+        const [resultados] = await db.query('SELECT * FROM materiales ORDER BY nombre');
         return resultados;
     },
 
-    crear: async (nombre) => {
+    async crear(nombre) {
         const [resultado] = await db.query(
             'INSERT INTO materiales (nombre) VALUES (?)',
             [nombre]
         );
         return resultado.insertId;
     }
+};
 
-}
-
-module.exports = MaterialModel;
+export default MaterialModel;
