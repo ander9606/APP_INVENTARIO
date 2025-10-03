@@ -1,5 +1,5 @@
-import { categoriaService } from '../services/categoriaService.js';
-import { ESTADOS_ELEMENTO, COLORES_ESTADO } from '../utils/constants.js';
+import { categoriaService } from '../../services/categoriaService.js';
+import { ESTADOS_ELEMENTO, COLORES_ESTADO } from '../../utils/constants.js';
 
 /**
  * Constructor de formularios HTML para el módulo de inventario

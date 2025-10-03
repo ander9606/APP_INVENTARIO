@@ -1,4 +1,4 @@
-import { mostrarToast } from '../components/Toast.js';
+import { mostrarToast } from '../../components/Toast.js';
 
 /**
  * Módulo de validaciones para elementos del inventario

@@ -22,7 +22,7 @@ import { renderInventario } from './pages/Inventario.js';
 
 // Componentes
 import { renderNavbar, marcarSeccionActiva } from './components/Navbar.js';
-import { cerrarModal } from './components/modal.js';
+import { cerrarModal } from './components/Modal.js';
 import { mostrarToast } from './components/Toast.js';
 
 // Controladores

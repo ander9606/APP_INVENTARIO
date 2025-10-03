@@ -1,5 +1,5 @@
 import { categoriaService } from '../services/categoriaService.js';
-import { abrirModal, cerrarModal } from '../components/modal.js';
+import { abrirModal, cerrarModal } from '../components/Modal.js';
 import { mostrarToast } from '../components/Toast.js';
 import { confirmar } from '../utils/helpers.js';
 

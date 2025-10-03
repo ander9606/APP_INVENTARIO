@@ -1,11 +1,11 @@
-import { elementoService } from '../services/elementoService.js';
-import { serieService } from '../services/serieService.js';
-import { abrirModal, cerrarModal } from '../components/Modal.js';
-import { mostrarToast } from '../components/Toast.js';
-import { confirmar } from '../utils/helpers.js';
+import { elementoService } from '../../services/elementoService.js';
+import { serieService } from '../../services/serieService.js';
+import { abrirModal, cerrarModal } from '../../components/Modal.js';
+import { mostrarToast } from '../../components/Toast.js';
+import { confirmar } from '../../utils/helpers.js';
 import { inventarioFormBuilder } from './inventarioFormBuilder.js';
 import { inventarioValidator } from './inventarioValidator.js';
-import { seriesManager } from '../components/seriesManager.js';
+import { seriesManager } from '../../components/seriesManager.js';
 
 /**
  * Controlador principal del inventario
@@ -203,6 +203,109 @@ export const inventarioController = {
             return respuesta.data.requiere_series || false;
         } catch (error) {
             return false;
+        }
+    },
+
+    /**
+     * Abre modal para editar un elemento existente
+     * @param {number} id - ID del elemento a editar
+     */
+    async editarElemento(id) {
+        try {
+            // 1. Obtener datos del elemento
+            const respuesta = await elementoService.obtenerPorId(id);
+            const elemento = respuesta.data;
+
+            // 2. Si tiene series, obtenerlas también
+            let series = [];
+            if (elemento.requiere_series) {
+                const respuestaSeries = await serieService.obtenerPorElemento(id);
+                series = respuestaSeries.data;
+            }
+
+            // 3. Construir formulario de edición
+            const formularioHTML = await inventarioFormBuilder.construirFormularioEdicion(elemento, series);
+
+            // 4. Abrir modal
+            abrirModal(formularioHTML);
+
+            // 5. Configurar evento submit
+            this.configurarFormularioEdicion(id, elemento);
+
+        } catch (error) {
+            mostrarToast('Error al cargar datos para edición: ' + error.message, 'error');
+        }
+    },
+
+    /**
+     * Configura el formulario de edición
+     * @param {number} id - ID del elemento
+     * @param {object} elementoOriginal - Datos originales del elemento
+     */
+    configurarFormularioEdicion(id, elementoOriginal) {
+        const form = document.getElementById('form-elemento-editar');
+        
+        if (!form) {
+            console.error('Formulario de edición no encontrado');
+            return;
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            await this.procesarEdicionElemento(id, elementoOriginal);
+        };
+    },
+
+    /**
+     * Procesa la edición del elemento
+     * @param {number} id - ID del elemento
+     * @param {object} elementoOriginal - Datos originales
+     */
+    async procesarEdicionElemento(id, elementoOriginal) {
+        const form = document.getElementById('form-elemento-editar');
+        const btnSubmit = form.querySelector('button[type="submit"]');
+
+        try {
+            // 1. Recopilar datos modificados
+            const datosNuevos = {
+                nombre: document.getElementById('nombre')?.value || '',
+                descripcion: document.getElementById('descripcion')?.value || '',
+                categoria_id: document.getElementById('categoria_id')?.value || null,
+                cantidad: parseInt(document.getElementById('cantidad')?.value || 0, 10),
+                estado: document.getElementById('estado')?.value || 'bueno',
+                ubicacion: document.getElementById('ubicacion')?.value || null
+            };
+
+            // 2. Normalizar datos
+            const datosNormalizados = inventarioValidator.normalizarDatos(datosNuevos);
+
+            // 3. Validar datos básicos
+            if (!inventarioValidator.validarDatosBasicos(datosNormalizados)) {
+                return;
+            }
+
+            // 4. Deshabilitar botón
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Guardando...';
+
+            // 5. Enviar actualización al backend
+            await elementoService.actualizar(id, datosNormalizados);
+
+            // 6. ÉXITO: Cerrar modal y mostrar mensaje
+            cerrarModal();
+            mostrarToast('Elemento actualizado exitosamente', 'success');
+            
+            // 7. Recargar la vista de inventario
+            window.app.navegarA('inventario');
+
+        } catch (error) {
+            mostrarToast(error.message, 'error');
+            
+            // Rehabilitar botón
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = '✓ Guardar Cambios';
+            }
         }
     },
 
