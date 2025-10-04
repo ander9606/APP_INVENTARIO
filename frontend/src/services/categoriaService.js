@@ -56,5 +56,15 @@ export const categoriaService = {
         return await request(`/categorias/${id}`, {
             method: 'DELETE'
         });
+    },
+
+    /**
+     * Obtiene elementos de una categoría específica
+     * GET /api/categorias/:id/elementos
+     * @param {number} id - ID de la categoría
+     * @returns {Promise<{success: boolean, data: object, count: number}>}
+     */
+    async obtenerElementos(id) {
+        return await request(`/categorias/${id}/elementos`);
     }
 };

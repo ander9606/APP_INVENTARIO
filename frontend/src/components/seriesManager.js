@@ -1,166 +1,185 @@
 /**
- * Gestor de series dinámicas para elementos con números de serie
- * Maneja la adición, eliminación y recopilación de series en formularios
+ * Gestor de números de serie en formularios
+ * Maneja la interfaz de usuario para agregar/quitar series dinámicamente
+ * 
+ * RESPONSABILIDAD: UI de series en formularios (crear/editar elementos)
  */
 export const seriesManager = {
     
     /**
-     * Alterna la visibilidad de campos según si requiere series
+     * Contador de series agregadas (para IDs únicos)
+     */
+    contadorSeries: 0,
+
+    /**
+     * Alterna visibilidad del contenedor de series
+     * Se ejecuta cuando el usuario marca/desmarca "Requiere series"
      */
     toggle() {
         const checkbox = document.getElementById('requiere_series');
-        const containerSeries = document.getElementById('container-series');
+        const container = document.getElementById('container-series');
         const campoUbicacion = document.getElementById('campo-ubicacion');
-        const inputCantidad = document.getElementById('cantidad');
-
-        if (!checkbox || !containerSeries || !campoUbicacion || !inputCantidad) {
-            console.error('SeriesManager: Elementos del DOM no encontrados');
+        const campoCantidad = document.getElementById('cantidad');
+        
+        if (!checkbox || !container || !campoUbicacion) {
+            console.error('Elementos del formulario no encontrados');
             return;
         }
 
         if (checkbox.checked) {
-            // MODO: Con series
-            containerSeries.classList.remove('hidden');
+            // MOSTRAR sección de series
+            container.classList.remove('hidden');
             campoUbicacion.classList.add('hidden');
             
-            // Deshabilitar cantidad (se calculará automáticamente)
-            inputCantidad.disabled = true;
-            inputCantidad.value = 0;
-            inputCantidad.classList.add('bg-gray-100');
+            // Auto-generar campos según cantidad
+            const cantidad = parseInt(campoCantidad?.value || 1, 10);
+            this.generarCamposAutomaticos(cantidad);
             
-            // Limpiar series previas y agregar el primer campo
-            this.limpiar();
-            this.agregarCampo();
-            
+            // Actualizar cantidad cuando cambie
+            if (campoCantidad) {
+                campoCantidad.addEventListener('change', () => {
+                    this.sincronizarConCantidad();
+                });
+            }
         } else {
-            // MODO: Sin series
-            containerSeries.classList.add('hidden');
+            // OCULTAR sección de series
+            container.classList.add('hidden');
             campoUbicacion.classList.remove('hidden');
             
-            // Habilitar cantidad manual
-            inputCantidad.disabled = false;
-            inputCantidad.value = 1;
-            inputCantidad.classList.remove('bg-gray-100');
-            
-            // Limpiar todas las series
-            this.limpiar();
+            // Limpiar campos
+            this.limpiarCampos();
         }
     },
 
     /**
-     * Agrega un nuevo campo de input para un número de serie
+     * Genera campos de serie automáticamente según cantidad
+     * @param {number} cantidad - Número de campos a generar
+     */
+    generarCamposAutomaticos(cantidad) {
+        const lista = document.getElementById('lista-series');
+        if (!lista) return;
+
+        // Limpiar campos existentes
+        this.limpiarCampos();
+
+        // Generar campos
+        for (let i = 0; i < cantidad; i++) {
+            this.agregarCampo();
+        }
+    },
+
+    /**
+     * Sincroniza número de campos de serie con la cantidad del elemento
+     */
+    sincronizarConCantidad() {
+        const campoCantidad = document.getElementById('cantidad');
+        const lista = document.getElementById('lista-series');
+        
+        if (!campoCantidad || !lista) return;
+
+        const cantidadDeseada = parseInt(campoCantidad.value || 0, 10);
+        const cantidadActual = lista.children.length;
+
+        if (cantidadDeseada > cantidadActual) {
+            // Agregar campos faltantes
+            for (let i = cantidadActual; i < cantidadDeseada; i++) {
+                this.agregarCampo();
+            }
+        } else if (cantidadDeseada < cantidadActual) {
+            // Eliminar campos sobrantes
+            while (lista.children.length > cantidadDeseada) {
+                lista.removeChild(lista.lastChild);
+            }
+        }
+    },
+
+    /**
+     * Agrega un campo de serie individual al formulario
      */
     agregarCampo() {
-        const listaSeries = document.getElementById('lista-series');
+        const lista = document.getElementById('lista-series');
+        const estado = document.getElementById('estado')?.value || 'nuevo';
         
-        if (!listaSeries) {
-            console.error('SeriesManager: No se encontró lista-series');
+        if (!lista) {
+            console.error('Lista de series no encontrada');
             return;
         }
 
-        const index = listaSeries.children.length;
+        this.contadorSeries++;
+        const id = this.contadorSeries;
 
         const campoHTML = `
-            <div class="flex gap-2 items-center fade-in" data-serie-index="${index}">
-                <input 
-                    type="text" 
-                    placeholder="Número de serie (ej: C10X10-${String(index + 1).padStart(3, '0')})"
-                    class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none serie-input"
-                    data-index="${index}"
-                    required
-                >
+            <div class="flex gap-2 items-start serie-item" data-serie-id="${id}">
+                <div class="flex-1">
+                    <input 
+                        type="text" 
+                        id="serie_numero_${id}"
+                        name="serie_numero_${id}"
+                        placeholder="Ej: C10X10-001, TUBO-3M-045"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                        data-serie-numero
+                        required
+                    >
+                    <input 
+                        type="hidden" 
+                        id="serie_estado_${id}"
+                        name="serie_estado_${id}"
+                        value="${estado}"
+                        data-serie-estado
+                    >
+                </div>
                 <button 
                     type="button"
-                    onclick="window.seriesManager.eliminarCampo(this)"
-                    class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                    title="Eliminar esta serie">
+                    onclick="window.seriesManager.eliminarCampo(${id})"
+                    class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium"
+                    title="Eliminar serie">
                     ✕
                 </button>
             </div>
         `;
 
-        listaSeries.insertAdjacentHTML('beforeend', campoHTML);
-        
-        // Actualizar contador de cantidad
-        this.actualizarCantidad();
-        
-        // Hacer focus en el nuevo campo
-        const nuevoInput = listaSeries.querySelector(`[data-index="${index}"]`);
-        if (nuevoInput) {
-            nuevoInput.focus();
+        lista.insertAdjacentHTML('beforeend', campoHTML);
+    },
+
+    /**
+     * Elimina un campo de serie específico
+     * @param {number} id - ID del campo a eliminar
+     */
+    eliminarCampo(id) {
+        const campo = document.querySelector(`[data-serie-id="${id}"]`);
+        if (campo) {
+            campo.remove();
+        }
+
+        // Actualizar cantidad
+        const campoCantidad = document.getElementById('cantidad');
+        const lista = document.getElementById('lista-series');
+        if (campoCantidad && lista) {
+            campoCantidad.value = lista.children.length;
         }
     },
 
     /**
-     * Elimina un campo de serie
-     * @param {HTMLElement} boton - Botón que disparó la eliminación
+     * Recopila todas las series del formulario
+     * @param {string} estadoPorDefecto - Estado por defecto si no se especifica
+     * @returns {Array} Array de objetos {numero_serie, estado, fecha_ingreso}
      */
-    eliminarCampo(boton) {
-        const contenedor = boton.closest('[data-serie-index]');
-        
-        if (contenedor) {
-            // Animación de salida
-            contenedor.style.opacity = '0';
-            contenedor.style.transform = 'translateX(-10px)';
-            contenedor.style.transition = 'all 0.2s ease';
-            
-            setTimeout(() => {
-                contenedor.remove();
-                this.actualizarCantidad();
-                this.reindexar();
-            }, 200);
-        }
-    },
-
-    /**
-     * Actualiza el campo cantidad según el número de series
-     */
-    actualizarCantidad() {
-        const listaSeries = document.getElementById('lista-series');
-        const inputCantidad = document.getElementById('cantidad');
-        
-        if (!listaSeries || !inputCantidad) return;
-        
-        const totalSeries = listaSeries.children.length;
-        inputCantidad.value = totalSeries;
-    },
-
-    /**
-     * Re-indexa los campos de serie después de eliminar uno
-     */
-    reindexar() {
-        const listaSeries = document.getElementById('lista-series');
-        if (!listaSeries) return;
-
-        const campos = listaSeries.children;
-        
-        Array.from(campos).forEach((campo, index) => {
-            campo.setAttribute('data-serie-index', index);
-            const input = campo.querySelector('.serie-input');
-            if (input) {
-                input.setAttribute('data-index', index);
-            }
-        });
-    },
-
-    /**
-     * Recopila todos los números de serie ingresados
-     * @param {string} estado - Estado por defecto para las series
-     * @returns {Array} - Array de objetos con información de series
-     */
-    recopilar(estado = 'nuevo') {
-        const inputsSeries = document.querySelectorAll('.serie-input');
+    recopilar(estadoPorDefecto = 'nuevo') {
         const series = [];
+        const campos = document.querySelectorAll('[data-serie-numero]');
 
-        inputsSeries.forEach(input => {
-            const numeroSerie = input.value.trim();
+        campos.forEach((campo, index) => {
+            const numeroSerie = campo.value.trim();
             
-            if (numeroSerie) {
+            if (numeroSerie.length > 0) {
+                // Buscar el estado asociado
+                const campoEstado = campo.parentElement.querySelector('[data-serie-estado]');
+                const estado = campoEstado?.value || estadoPorDefecto;
+
                 series.push({
                     numero_serie: numeroSerie,
                     estado: estado,
-                    fecha_ingreso: new Date().toISOString().split('T')[0],
-                    ubicacion: null
+                    fecha_ingreso: new Date().toISOString().split('T')[0]
                 });
             }
         });
@@ -169,60 +188,72 @@ export const seriesManager = {
     },
 
     /**
-     * Limpia todos los campos de serie
+     * Valida que no haya series duplicadas
+     * @returns {boolean} true si no hay duplicados, false si los hay
      */
-    limpiar() {
-        const listaSeries = document.getElementById('lista-series');
-        if (listaSeries) {
-            listaSeries.innerHTML = '';
-        }
-        this.actualizarCantidad();
-    },
+    validarNoDuplicados() {
+        const campos = document.querySelectorAll('[data-serie-numero]');
+        const numeros = new Set();
+        let hayDuplicados = false;
 
-    /**
-     * Verifica si hay campos de serie vacíos
-     * @returns {boolean} - true si hay campos vacíos
-     */
-    tieneSeriesVacias() {
-        const inputsSeries = document.querySelectorAll('.serie-input');
-        
-        for (const input of inputsSeries) {
-            if (!input.value.trim()) {
-                return true;
+        campos.forEach(campo => {
+            const numero = campo.value.trim().toUpperCase();
+            
+            if (numero.length > 0) {
+                if (numeros.has(numero)) {
+                    hayDuplicados = true;
+                    campo.classList.add('border-red-500');
+                } else {
+                    numeros.add(numero);
+                    campo.classList.remove('border-red-500');
+                }
             }
+        });
+
+        return !hayDuplicados;
+    },
+
+    /**
+     * Limpia todos los campos de series
+     */
+    limpiarCampos() {
+        const lista = document.getElementById('lista-series');
+        if (lista) {
+            lista.innerHTML = '';
         }
-        
-        return false;
+        this.contadorSeries = 0;
     },
 
     /**
-     * Obtiene el número total de series ingresadas
-     * @returns {number}
+     * Pre-carga series existentes (para edición)
+     * @param {Array} series - Array de series a cargar
      */
-    obtenerTotal() {
-        const inputsSeries = document.querySelectorAll('.serie-input');
-        return inputsSeries.length;
-    },
-
-    /**
-     * Precarga series en el formulario (útil para edición)
-     * @param {Array} series - Array de objetos con series a cargar
-     */
-    precargar(series) {
-        this.limpiar();
-        
+    precargarSeries(series) {
         if (!series || series.length === 0) return;
+
+        this.limpiarCampos();
 
         series.forEach(serie => {
             this.agregarCampo();
-            const inputs = document.querySelectorAll('.serie-input');
-            const ultimoInput = inputs[inputs.length - 1];
-            if (ultimoInput) {
-                ultimoInput.value = serie.numero_serie;
+            
+            // Llenar el último campo agregado
+            const campos = document.querySelectorAll('[data-serie-numero]');
+            const ultimoCampo = campos[campos.length - 1];
+            
+            if (ultimoCampo) {
+                ultimoCampo.value = serie.numero_serie;
+                
+                const campoEstado = ultimoCampo.parentElement.querySelector('[data-serie-estado]');
+                if (campoEstado) {
+                    campoEstado.value = serie.estado;
+                }
             }
         });
     }
 };
 
-// Exponer globalmente para los onclick en HTML
+// Exponer globalmente para acceso desde HTML (onclick, etc.)
 window.seriesManager = seriesManager;
+
+// Exponer también la función de validación
+window.validarSeries = () => seriesManager.validarNoDuplicados();

@@ -10,6 +10,7 @@ const router = express.Router();
 // Rutas específicas primero
 router.get('/jerarquia', categoriasController.obtenerCategoriasJerarquicas);
 router.get('/:id/subcategorias', categoriasController.obtenerSubcategorias);
+router.get('/:id/elementos', categoriasController.obtenerElementosPorCategoria); // ← NUEVA
 
 // Rutas generales después
 router.get('/', categoriasController.obtenerCategorias);

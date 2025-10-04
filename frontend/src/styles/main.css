@@ -411,3 +411,37 @@ button:disabled {
         transition-duration: 0.01ms !important;
     }
 }
+
+/* Estilos para el árbol de categorías */
+.categoria-item {
+    position: relative;
+}
+
+.hijos-container {
+    margin-top: 4px;
+}
+
+/* Animación suave para elementos */
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hover en elementos clickeables */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.cursor-pointer:active {
+    transform: scale(0.98);
+}

@@ -161,3 +161,96 @@ export const obtenerSubcategorias = async (req, res, next) => {
         next(error);
     }
 };
+
+
+/**
+ * Obtener todos los elementos de una categoría (incluye subcategorías)
+ */
+export const obtenerElementosPorCategoria = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        // Verificar que la categoría existe
+        const categoria = await CategoriasModel.obtenerPorId(id);
+        if (!categoria) {
+            return res.status(404).json({
+                success: false,
+                error: 'Categoría no encontrada'
+            });
+        }
+
+        // Obtener elementos de esta categoría
+        const elementos = await obtenerElementosRecursivo(id);
+
+        res.json({
+            success: true,
+            data: {
+                categoria: {
+                    id: categoria.id,
+                    nombre: categoria.nombre,
+                    padre_id: categoria.padre_id
+                },
+                elementos: elementos
+            },
+            count: elementos.length
+        });
+    } catch (error) {
+        console.error('Error al obtener elementos por categoría:', error);
+        next(error);
+    }
+};
+
+/**
+ * Helper: Obtiene elementos de una categoría y sus subcategorías recursivamente
+ */
+async function obtenerElementosRecursivo(categoriaId) {
+    const db = (await import('../models/db.js')).default;
+    
+    // Obtener todos los IDs de categorías (esta + subcategorías)
+    const idsCategoria = await obtenerIdsCategoriaConHijos(categoriaId);
+    
+    // Construir placeholders para SQL
+    const placeholders = idsCategoria.map(() => '?').join(',');
+    
+    // Obtener elementos
+    const [elementos] = await db.query(`
+        SELECT 
+            e.id,
+            e.nombre,
+            e.descripcion,
+            e.cantidad,
+            e.requiere_series,
+            e.estado,
+            e.ubicacion,
+            e.current_status,
+            e.cleaning_status,
+            cat.nombre AS categoria_nombre,
+            cat.id AS categoria_id
+        FROM elementos e
+        LEFT JOIN categorias cat ON e.categoria_id = cat.id
+        WHERE e.categoria_id IN (${placeholders})
+        ORDER BY e.nombre
+    `, idsCategoria);
+    
+    return elementos;
+}
+
+/**
+ * Helper: Obtiene IDs de una categoría y todas sus subcategorías
+ */
+async function obtenerIdsCategoriaConHijos(categoriaId) {
+    const CategoriasModel = (await import('../models/CategoriasModel.js')).default;
+    const ids = [categoriaId];
+
+    async function obtenerHijosRecursivo(padreId) {
+        const hijos = await CategoriasModel.obtenerSubcategorias(padreId);
+        
+        for (const hijo of hijos) {
+            ids.push(hijo.id);
+            await obtenerHijosRecursivo(hijo.id);
+        }
+    }
+
+    await obtenerHijosRecursivo(categoriaId);
+    return ids;
+}
