@@ -8,6 +8,7 @@ import seriesRoutes from './routes/series.js';
 import categoriasRoutes from './routes/categorias.js';
 import materialesRoutes from './routes/materiales.js';
 import unidadesRoutes from './routes/unidades.js';
+import loteMovimientosRoutes from './routes/loteMovimientos.js';
 
 // Importar middleware de errores
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -41,6 +42,7 @@ app.use('/api/series', seriesRoutes);
 app.use('/api/categorias', categoriasRoutes);
 app.use('/api/materiales', materialesRoutes);
 app.use('/api/unidades', unidadesRoutes);
+app.use('/api/lote-movimientos', loteMovimientosRoutes);
 
 // Manejo de rutas no encontradas
 app.use(notFoundHandler);
