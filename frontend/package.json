@@ -6,7 +6,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build:css": "npx @tailwindcss/cli -i ./estilos/src/styles.css -o ./dist/output.css",
-    "watch:css": "npm run build:css -- --watch"
+    "watch:css": "npm run build:css -- --watch",
+      "dev": "vite",
+  "build": "vite build",
+  "preview": "vite preview"
   },
   "keywords": [],
   "author": "",

@@ -1,64 +1,41 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sistema de Inventario - Carpas</title>
+
+    <!-- Tailwind (opcional mantener CDN mientras tanto, luego puedes integrarlo con Vite) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="./src/styles/main.css">
-</head>
-<body class="bg-gray-50">
+
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" href="./src/styles/main.css" />
+  </head>
+
+  <body class="bg-gray-50">
     <!-- Navbar se inyecta aquí -->
     <div id="navbar"></div>
 
     <!-- Contenedor principal -->
     <main class="container mx-auto px-4 py-8">
-        <div id="app-content"></div>
+      <div id="app-content"></div>
     </main>
 
     <!-- Modal se inyecta aquí -->
-    <div id="modal-overlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
-        <div id="modal-content" class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"></div>
+    <div
+      id="modal-overlay"
+      class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center"
+    >
+      <div
+        id="modal-content"
+        class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"
+      ></div>
     </div>
 
     <!-- Toast container -->
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
-    <!-- Scripts - Cargar en orden -->
-    
-    <!-- Utilidades -->
-    <script type="module" src="./src/utils/constants.js"></script>
-    <script type="module" src="./src/utils/helpers.js"></script>
-    
-    <!-- Servicios de API -->
-    <script type="module" src="./src/services/api.js"></script>
-    <script type="module" src="./src/services/categoriaService.js"></script>
-    <script type="module" src="./src/services/elementoService.js"></script>
-    <script type="module" src="./src/services/serieService.js"></script>
-    <script type="module" src="./src/services/loteMovimientoService.js"></script>
-    
-    <!-- Componentes UI -->
-    <script type="module" src="./src/components/Toast.js"></script>
-    <script type="module" src="./src/components/Modal.js"></script>
-    <script type="module" src="./src/components/Navbar.js"></script>
-    <script type="module" src="./src/components/Card.js"></script>
-    <script type="module" src="./src/components/seriesManager.js"></script>
-    <script type="module" src="./src/components/loteMovimientoUI.js"></script>
-    <script type="module" src="./src/components/dashboard/DashboardInfo.js"></script>
-    <script type="module" src="./src/components/dashboard/DashboardGuide.js"></script>
-    
-    <!-- Controladores -->
-    <script type="module" src="./src/controllers/categoriaController.js"></script>
-    <script type="module" src="./src/controllers/inventario/inventarioValidator.js"></script>
-    <script type="module" src="./src/controllers/inventario/inventarioFormBuilder.js"></script>
-    <script type="module" src="./src/controllers/inventario/inventarioController.js"></script>
-    
-    <!-- Páginas -->
-    <script type="module" src="./src/pages/Dashboard.js"></script>
-    <script type="module" src="./src/pages/Categorias.js"></script>
-    <script type="module" src="./src/pages/Inventario.js"></script>
-    
-    <!-- App principal (debe ser el último) -->
-    <script type="module" src="./src/app.js"></script>
-</body>
+    <!-- Solo un script principal: Vite se encarga de importar los módulos -->
+    <script type="module" src="/src/app.js"></script>
+  </body>
 </html>

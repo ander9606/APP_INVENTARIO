@@ -1,24 +1,27 @@
+// frontend/src/services/loteMovimientoService.js
+
 import { request } from './api.js';
 
 /**
  * Servicio para gestionar movimientos entre lotes de elementos
- * Integra con el backend de movimientos de lotes
+ * Comunica con los endpoints del backend para cambios de estado
  */
 export const loteMovimientoService = {
+    
     /**
-     * Cambiar el estado de un lote (mover unidades entre estados)
+     * Cambia el estado de un lote (mueve unidades entre estados)
      * POST /api/lote-movimientos/cambiar-estado
      * @param {object} datos - Datos del movimiento
      * @param {number} datos.lote_id - ID del lote origen
      * @param {number} datos.cantidad - Cantidad a mover
-     * @param {string} datos.current_status_destino - Estado operativo destino
+     * @param {string} datos.current_status_destino - Estado destino (AVAILABLE, RENTED, CLEANING, etc.)
      * @param {string} datos.cleaning_status_destino - Estado de limpieza destino
      * @param {string} datos.motivo - Motivo del movimiento
-     * @param {string} datos.descripcion - Descripción opcional
-     * @param {number} datos.costo_reparacion - Costo de reparación (opcional)
+     * @param {string} datos.descripcion - Descripción adicional (opcional)
+     * @param {number} datos.costo_reparacion - Costo si aplica (opcional)
      * @returns {Promise<{success: boolean, data: object, message: string}>}
      */
-    async cambiarEstadoLote(datos) {
+    async cambiarEstado(datos) {
         return await request('/lote-movimientos/cambiar-estado', {
             method: 'POST',
             body: JSON.stringify(datos)
@@ -26,7 +29,7 @@ export const loteMovimientoService = {
     },
 
     /**
-     * Obtener historial de movimientos de un elemento
+     * Obtiene el historial de movimientos de un elemento
      * GET /api/lote-movimientos/historial/:id
      * @param {number} elementoBaseId - ID del elemento base
      * @returns {Promise<{success: boolean, data: Array, count: number}>}
@@ -36,7 +39,7 @@ export const loteMovimientoService = {
     },
 
     /**
-     * Obtener motivos disponibles para movimientos
+     * Obtiene los motivos disponibles para movimientos
      * GET /api/lote-movimientos/motivos
      * @returns {Promise<{success: boolean, data: Array}>}
      */
@@ -45,68 +48,60 @@ export const loteMovimientoService = {
     },
 
     /**
-     * Obtener estadísticas de movimientos
+     * Obtiene estadísticas de movimientos de un elemento
      * GET /api/lote-movimientos/estadisticas/:id
      * @param {number} elementoBaseId - ID del elemento base
-     * @param {string} fechaInicio - Fecha inicio (opcional)
-     * @param {string} fechaFin - Fecha fin (opcional)
+     * @param {object} opciones - Opciones de filtrado
+     * @param {string} opciones.fecha_inicio - Fecha de inicio (YYYY-MM-DD)
+     * @param {string} opciones.fecha_fin - Fecha de fin (YYYY-MM-DD)
      * @returns {Promise<{success: boolean, data: Array}>}
      */
-    async obtenerEstadisticas(elementoBaseId, fechaInicio = null, fechaFin = null) {
-        let url = `/lote-movimientos/estadisticas/${elementoBaseId}`;
-        
-        const params = new URLSearchParams();
-        if (fechaInicio) params.append('fecha_inicio', fechaInicio);
-        if (fechaFin) params.append('fecha_fin', fechaFin);
-        
-        if (params.toString()) {
-            url += `?${params.toString()}`;
-        }
-        
+    async obtenerEstadisticas(elementoBaseId, opciones = {}) {
+        const query = new URLSearchParams(opciones).toString();
+        const url = `/lote-movimientos/estadisticas/${elementoBaseId}${query ? `?${query}` : ''}`;
         return await request(url);
     },
 
-    /**
-     * OPERACIONES ESPECÍFICAS DE NEGOCIO
-     */
+    // ============================================
+    // MÉTODOS DE CONVENIENCIA
+    // ============================================
 
     /**
-     * Marcar elementos como alquilados
-     * @param {object} datos
-     * @param {number} datos.lote_id - ID del lote disponible
+     * Marca unidades como alquiladas
+     * @param {object} datos - Datos del alquiler
+     * @param {number} datos.lote_id - ID del lote
      * @param {number} datos.cantidad - Cantidad a alquilar
-     * @param {number} datos.rental_id - ID del contrato de alquiler
-     * @param {string} datos.descripcion - Descripción del alquiler
-     * @returns {Promise<object>}
+     * @param {number} datos.rental_id - ID del alquiler (opcional)
+     * @param {string} datos.descripcion - Notas (opcional)
+     * @returns {Promise}
      */
     async marcarComoAlquilado(datos) {
-        return await this.cambiarEstadoLote({
+        return await this.cambiarEstado({
             lote_id: datos.lote_id,
             cantidad: datos.cantidad,
             current_status_destino: 'RENTED',
             cleaning_status_destino: 'GOOD',
             motivo: 'RENTED_OUT',
-            descripcion: datos.descripcion || `Alquiler #${datos.rental_id}`,
+            descripcion: datos.descripcion,
             rental_id: datos.rental_id
         });
     },
 
     /**
-     * Procesar devolución de alquiler
-     * @param {object} datos
+     * Procesa devolución de alquiler
+     * @param {object} datos - Datos de la devolución
      * @param {number} datos.lote_alquilado_id - ID del lote alquilado
      * @param {number} datos.cantidad - Cantidad devuelta
-     * @param {string} datos.cleaning_status_devolucion - Estado de limpieza al devolver
-     * @param {number} datos.rental_id - ID del contrato de alquiler
-     * @param {string} datos.notas - Notas de la devolución
-     * @param {number} datos.costo_reparacion - Costo de reparación si aplica
-     * @returns {Promise<object>}
+     * @param {string} datos.cleaning_status_devolucion - Estado de limpieza (CLEAN, DIRTY, VERY_DIRTY, DAMAGED)
+     * @param {string} datos.notas - Notas de devolución (opcional)
+     * @param {number} datos.costo_reparacion - Costo si está dañado (opcional)
+     * @returns {Promise}
      */
     async procesarDevolucion(datos) {
-        // Determinar current_status y motivo según el cleaning_status
+        // Determinar estado destino según limpieza
         let current_status_destino;
         let motivo;
-        
+
         switch(datos.cleaning_status_devolucion) {
             case 'CLEAN':
                 current_status_destino = 'AVAILABLE';
@@ -125,113 +120,98 @@ export const loteMovimientoService = {
                 current_status_destino = 'CLEANING';
                 motivo = 'RETURNED_DIRTY';
         }
-        
-        return await this.cambiarEstadoLote({
+
+        return await this.cambiarEstado({
             lote_id: datos.lote_alquilado_id,
             cantidad: datos.cantidad,
-            current_status_destino: current_status_destino,
+            current_status_destino,
             cleaning_status_destino: datos.cleaning_status_devolucion,
-            motivo: motivo,
-            descripcion: datos.notas || 'Devolución de alquiler',
-            rental_id: datos.rental_id,
-            costo_reparacion: datos.costo_reparacion || null
-        });
-    },
-
-    /**
-     * Completar limpieza de elementos
-     * @param {object} datos
-     * @param {number} datos.lote_limpieza_id - ID del lote en limpieza
-     * @param {number} datos.cantidad - Cantidad limpiada
-     * @param {string} datos.notas - Notas de la limpieza
-     * @returns {Promise<object>}
-     */
-    async completarLimpieza(datos) {
-        return await this.cambiarEstadoLote({
-            lote_id: datos.lote_limpieza_id,
-            cantidad: datos.cantidad,
-            current_status_destino: 'AVAILABLE',
-            cleaning_status_destino: 'CLEAN',
-            motivo: 'CLEANING_COMPLETED',
-            descripcion: datos.notas || 'Limpieza completada'
-        });
-    },
-
-    /**
-     * Completar reparación/mantenimiento
-     * @param {object} datos
-     * @param {number} datos.lote_mantenimiento_id - ID del lote en mantenimiento
-     * @param {number} datos.cantidad - Cantidad reparada
-     * @param {number} datos.costo_reparacion - Costo de la reparación
-     * @param {string} datos.notas - Notas de la reparación
-     * @returns {Promise<object>}
-     */
-    async completarReparacion(datos) {
-        return await this.cambiarEstadoLote({
-            lote_id: datos.lote_mantenimiento_id,
-            cantidad: datos.cantidad,
-            current_status_destino: 'AVAILABLE',
-            cleaning_status_destino: 'GOOD',
-            motivo: 'REPAIR_COMPLETED',
-            descripcion: datos.notas || 'Reparación completada',
+            motivo,
+            descripcion: datos.notas,
             costo_reparacion: datos.costo_reparacion
         });
     },
 
     /**
-     * Marcar elementos como dañados en uso
-     * @param {object} datos
-     * @param {number} datos.lote_id - ID del lote disponible o alquilado
-     * @param {number} datos.cantidad - Cantidad dañada
-     * @param {string} datos.descripcion - Descripción del daño
-     * @returns {Promise<object>}
+     * Completa el proceso de limpieza
+     * @param {object} datos - Datos de finalización de limpieza
+     * @param {number} datos.lote_limpieza_id - ID del lote en limpieza
+     * @param {number} datos.cantidad - Cantidad limpia
+     * @param {string} datos.notas - Notas (opcional)
+     * @returns {Promise}
      */
-    async marcarComoDanado(datos) {
-        return await this.cambiarEstadoLote({
+    async completarLimpieza(datos) {
+        return await this.cambiarEstado({
+            lote_id: datos.lote_limpieza_id,
+            cantidad: datos.cantidad,
+            current_status_destino: 'AVAILABLE',
+            cleaning_status_destino: 'CLEAN',
+            motivo: 'CLEANING_COMPLETED',
+            descripcion: datos.notas
+        });
+    },
+
+    /**
+     * Envía unidades a mantenimiento
+     * @param {object} datos - Datos del mantenimiento
+     * @param {number} datos.lote_id - ID del lote
+     * @param {number} datos.cantidad - Cantidad a enviar
+     * @param {string} datos.motivo_detalle - Descripción del problema
+     * @param {number} datos.costo_estimado - Costo estimado (opcional)
+     * @returns {Promise}
+     */
+    async enviarAMantenimiento(datos) {
+        return await this.cambiarEstado({
             lote_id: datos.lote_id,
             cantidad: datos.cantidad,
             current_status_destino: 'MAINTENANCE',
             cleaning_status_destino: 'DAMAGED',
-            motivo: 'DAMAGED_IN_USE',
-            descripcion: datos.descripcion || 'Dañado en uso'
+            motivo: 'SENT_TO_MAINTENANCE',
+            descripcion: datos.motivo_detalle,
+            costo_reparacion: datos.costo_estimado
         });
     },
 
     /**
-     * Marcar elementos como perdidos
-     * @param {object} datos
-     * @param {number} datos.lote_id - ID del lote
-     * @param {number} datos.cantidad - Cantidad perdida
-     * @param {string} datos.descripcion - Descripción de la pérdida
-     * @returns {Promise<object>}
+     * Completa mantenimiento/reparación
+     * @param {object} datos - Datos de finalización
+     * @param {number} datos.lote_mantenimiento_id - ID del lote en mantenimiento
+     * @param {number} datos.cantidad - Cantidad reparada
+     * @param {number} datos.costo_final - Costo final de reparación
+     * @param {string} datos.notas - Notas (opcional)
+     * @returns {Promise}
      */
-    async marcarComoPerdido(datos) {
-        return await this.cambiarEstadoLote({
-            lote_id: datos.lote_id,
+    async completarMantenimiento(datos) {
+        return await this.cambiarEstado({
+            lote_id: datos.lote_mantenimiento_id,
             cantidad: datos.cantidad,
-            current_status_destino: 'RETIRED',
+            current_status_destino: 'AVAILABLE',
             cleaning_status_destino: 'GOOD',
-            motivo: 'LOST',
-            descripcion: datos.descripcion || 'Elemento perdido'
+            motivo: 'MAINTENANCE_COMPLETED',
+            descripcion: datos.notas,
+            costo_reparacion: datos.costo_final
         });
     },
 
     /**
-     * Descartar elementos dañados irreparables
-     * @param {object} datos
-     * @param {number} datos.lote_id - ID del lote en mantenimiento
-     * @param {number} datos.cantidad - Cantidad a descartar
-     * @param {string} datos.razon - Razón del descarte
-     * @returns {Promise<object>}
+     * Retira unidades del servicio (da de baja)
+     * @param {object} datos - Datos de retiro
+     * @param {number} datos.lote_id - ID del lote
+     * @param {number} datos.cantidad - Cantidad a retirar
+     * @param {string} datos.motivo_retiro - Razón del retiro
+     * @returns {Promise}
      */
-    async descartarElementos(datos) {
-        return await this.cambiarEstadoLote({
+    async retirarDelServicio(datos) {
+        return await this.cambiarEstado({
             lote_id: datos.lote_id,
             cantidad: datos.cantidad,
             current_status_destino: 'RETIRED',
             cleaning_status_destino: 'DAMAGED',
-            motivo: 'DISCARDED',
-            descripcion: datos.razon || 'Descartado por daño irreparable'
+            motivo: 'RETIRED',
+            descripcion: datos.motivo_retiro
         });
     }
 };
+
+// Exportar servicio
+export default loteMovimientoService;
