@@ -25,20 +25,40 @@
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <!-- Scripts - Cargar en orden -->
+    
+    <!-- Utilidades -->
     <script type="module" src="./src/utils/constants.js"></script>
     <script type="module" src="./src/utils/helpers.js"></script>
+    
+    <!-- Servicios de API -->
     <script type="module" src="./src/services/api.js"></script>
     <script type="module" src="./src/services/categoriaService.js"></script>
     <script type="module" src="./src/services/elementoService.js"></script>
     <script type="module" src="./src/services/serieService.js"></script>
+    <script type="module" src="./src/services/loteMovimientoService.js"></script>
+    
+    <!-- Componentes UI -->
     <script type="module" src="./src/components/Toast.js"></script>
     <script type="module" src="./src/components/Modal.js"></script>
     <script type="module" src="./src/components/Navbar.js"></script>
+    <script type="module" src="./src/components/Card.js"></script>
+    <script type="module" src="./src/components/seriesManager.js"></script>
+    <script type="module" src="./src/components/loteMovimientoUI.js"></script>
+    <script type="module" src="./src/components/dashboard/DashboardInfo.js"></script>
+    <script type="module" src="./src/components/dashboard/DashboardGuide.js"></script>
+    
+    <!-- Controladores -->
     <script type="module" src="./src/controllers/categoriaController.js"></script>
+    <script type="module" src="./src/controllers/inventario/inventarioValidator.js"></script>
+    <script type="module" src="./src/controllers/inventario/inventarioFormBuilder.js"></script>
     <script type="module" src="./src/controllers/inventario/inventarioController.js"></script>
+    
+    <!-- Páginas -->
     <script type="module" src="./src/pages/Dashboard.js"></script>
     <script type="module" src="./src/pages/Categorias.js"></script>
     <script type="module" src="./src/pages/Inventario.js"></script>
+    
+    <!-- App principal (debe ser el último) -->
     <script type="module" src="./src/app.js"></script>
 </body>
 </html>

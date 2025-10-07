@@ -1,29 +1,36 @@
 import { elementoService } from '../services/elementoService.js';
 import { mostrarToast } from '../components/Toast.js';
-import { COLORES_ESTADO } from '../utils/constants.js';
+import { 
+    CURRENT_STATUS,
+    CURRENT_STATUS_LABELS,
+    CLEANING_STATUS_LABELS,
+    COLORES_CURRENT_STATUS,
+    COLORES_CLEANING_STATUS,
+    ICONOS_CURRENT_STATUS
+} from '../utils/constants.js';
 
 /**
  * Página de Gestión de Inventario
- * Muestra todos los elementos del inventario en formato de grid
- * 
- * RESPONSABILIDAD: Renderizar la vista de inventario
- * LÓGICA DE NEGOCIO: Delegada a inventarioController.js
+ * Muestra elementos agrupados por estado operativo (current_status)
+ * con acciones específicas para cada estado
  */
 
 /**
  * Renderiza la vista completa del inventario
- * @returns {Promise<string>} HTML de la página
  */
 export async function renderInventario() {
     try {
-        // Obtener todos los elementos
         const response = await elementoService.obtenerTodos();
         const elementos = response.data;
+
+        // Agrupar elementos por current_status
+        const elementosAgrupados = agruparPorEstado(elementos);
 
         return `
             <div class="max-w-7xl mx-auto fade-in">
                 ${renderHeader(elementos.length)}
-                ${renderContent(elementos)}
+                ${renderFiltrosPorEstado(elementosAgrupados)}
+                ${renderGruposDeEstado(elementosAgrupados)}
             </div>
         `;
     } catch (error) {
@@ -33,331 +40,371 @@ export async function renderInventario() {
 }
 
 /**
- * Renderiza el encabezado de la página con contador
- * @param {number} totalElementos - Número total de elementos
- * @returns {string} HTML del header
+ * Agrupa elementos por current_status
+ */
+function agruparPorEstado(elementos) {
+    const grupos = {
+        AVAILABLE: [],
+        RENTED: [],
+        CLEANING: [],
+        MAINTENANCE: [],
+        RETIRED: []
+    };
+
+    elementos.forEach(elemento => {
+        const status = elemento.current_status || 'AVAILABLE';
+        if (grupos[status]) {
+            grupos[status].push(elemento);
+        }
+    });
+
+    return grupos;
+}
+
+/**
+ * Renderiza el encabezado
  */
 function renderHeader(totalElementos) {
     return `
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-                <h2 class="text-3xl font-bold text-gray-800 mb-1">Inventario</h2>
+                <h2 class="text-3xl font-bold text-gray-800 mb-1">
+                    📦 Inventario por Estados
+                </h2>
                 <p class="text-gray-600 text-sm">
-                    ${totalElementos > 0 
-                        ? `${totalElementos} elemento${totalElementos !== 1 ? 's' : ''} registrado${totalElementos !== 1 ? 's' : ''}` 
-                        : 'No hay elementos registrados'
-                    }
+                    ${totalElementos} elemento${totalElementos !== 1 ? 's' : ''} registrado${totalElementos !== 1 ? 's' : ''}
                 </p>
             </div>
             
-            <div class="flex gap-3">
-                ${renderSearchButton()}
-                ${renderNewElementButton()}
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Renderiza el botón de búsqueda (futuro)
- * @returns {string} HTML del botón
- */
-function renderSearchButton() {
-    return `
-        <button 
-            class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition font-medium flex items-center gap-2 opacity-50 cursor-not-allowed"
-            disabled
-            title="Próximamente">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            Buscar
-        </button>
-    `;
-}
-
-/**
- * Renderiza el botón de nuevo elemento
- * @returns {string} HTML del botón
- */
-function renderNewElementButton() {
-    return `
-        <button 
-            onclick="window.inventarioController.crearElemento()" 
-            class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold shadow-md hover:shadow-lg flex items-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Nuevo Elemento
-        </button>
-    `;
-}
-
-/**
- * Renderiza el contenido principal
- * @param {Array} elementos - Array de elementos del inventario
- * @returns {string} HTML del contenido
- */
-function renderContent(elementos) {
-    if (!elementos || elementos.length === 0) {
-        return renderEmptyState();
-    }
-
-    return `
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            ${elementos.map((elemento, index) => renderElementoCard(elemento, index)).join('')}
-        </div>
-    `;
-}
-
-/**
- * Renderiza una tarjeta de elemento individual
- * @param {object} elemento - Datos del elemento
- * @param {number} index - Índice para animación escalonada
- * @returns {string} HTML de la tarjeta
- */
-function renderElementoCard(elemento, index) {
-    return `
-        <div 
-            class="bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 hover:border-blue-300 fade-in-up"
-            style="animation-delay: ${index * 0.05}s">
-            
-            <!-- Header de la tarjeta con estado -->
-            ${renderCardHeader(elemento)}
-            
-            <!-- Cuerpo de la tarjeta -->
-            <div class="p-5">
-                ${renderCardBody(elemento)}
-                ${renderCardFooter(elemento)}
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Renderiza el header de la tarjeta con nombre y estado
- * @param {object} elemento - Datos del elemento
- * @returns {string} HTML del header
- */
-function renderCardHeader(elemento) {
-    const colorEstado = COLORES_ESTADO[elemento.estado] || 'bg-gray-100 text-gray-800';
-    
-    return `
-        <div class="bg-gradient-to-r from-gray-50 to-gray-100 p-4 border-b border-gray-200">
-            <div class="flex justify-between items-start gap-2">
-                <h3 class="font-bold text-lg text-gray-800 leading-tight flex-1" title="${elemento.nombre}">
-                    ${truncateText(elemento.nombre, 30)}
-                </h3>
-                <span class="px-2 py-1 text-xs rounded-full font-medium ${colorEstado} whitespace-nowrap">
-                    ${elemento.estado}
-                </span>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Renderiza el cuerpo de la tarjeta con información
- * @param {object} elemento - Datos del elemento
- * @returns {string} HTML del cuerpo
- */
-function renderCardBody(elemento) {
-    return `
-        ${elemento.descripcion ? `
-            <p class="text-sm text-gray-600 mb-3 line-clamp-2" title="${elemento.descripcion}">
-                ${elemento.descripcion}
-            </p>
-        ` : ''}
-        
-        <div class="space-y-2 text-sm">
-            ${renderInfoRow('Cantidad', elemento.cantidad, '📦')}
-            ${renderInfoRow('Categoría', elemento.categoria_nombre || elemento.subcategoria_nombre || 'Sin categoría', '📁')}
-            ${elemento.ubicacion ? renderInfoRow('Ubicación', elemento.ubicacion, '📍') : ''}
-            ${renderSeriesIndicator(elemento)}
-        </div>
-    `;
-}
-
-/**
- * Renderiza una fila de información
- * @param {string} label - Etiqueta
- * @param {string|number} value - Valor
- * @param {string} icon - Emoji del icono
- * @returns {string} HTML de la fila
- */
-function renderInfoRow(label, value, icon) {
-    return `
-        <div class="flex items-start gap-2">
-            <span class="text-base">${icon}</span>
-            <div class="flex-1 min-w-0">
-                <span class="text-gray-500 text-xs">${label}:</span>
-                <span class="text-gray-800 font-medium ml-1 truncate">${value}</span>
-            </div>
-        </div>
-    `;
-}
-
-/**
- * Renderiza el indicador de series
- * @param {object} elemento - Datos del elemento
- * @returns {string} HTML del indicador
- */
-function renderSeriesIndicator(elemento) {
-    if (elemento.requiere_series) {
-        return `
-            <div class="flex items-center gap-2 text-blue-600 text-sm font-medium">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                <span>Con series individuales</span>
-            </div>
-        `;
-    } else {
-        return `
-            <div class="flex items-center gap-2 text-gray-500 text-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                </svg>
-                <span>Stock general</span>
-            </div>
-        `;
-    }
-}
-
-/**
- * Renderiza el footer de la tarjeta con botones de acción
- * @param {object} elemento - Datos del elemento
- * @returns {string} HTML del footer
- */
-function renderCardFooter(elemento) {
-    return `
-        <div class="mt-4 pt-4 border-t border-gray-200 flex gap-2">
-            <button 
-                onclick="window.inventarioController.verDetalle(${elemento.id})" 
-                class="flex-1 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition text-sm font-medium flex items-center justify-center gap-1"
-                title="Ver detalles">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                </svg>
-                Ver
-            </button>
-            <button 
-                onclick="window.inventarioController.editarElemento(${elemento.id})" 
-                class="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition text-sm font-medium"
-                title="Editar elemento">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-            </button>
-            <button 
-                onclick="window.inventarioController.eliminar(${elemento.id})" 
-                class="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition text-sm font-medium"
-                title="Eliminar elemento">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                </svg>
-            </button>
-        </div>
-    `;
-}
-
-/**
- * Renderiza el estado vacío cuando no hay elementos
- * @returns {string} HTML del estado vacío
- */
-function renderEmptyState() {
-    return `
-        <div class="text-center py-16">
-            <div class="mb-6">
-                <svg class="w-24 h-24 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path>
-                </svg>
-            </div>
-            <h3 class="text-xl font-semibold text-gray-700 mb-2">No hay elementos en el inventario</h3>
-            <p class="text-gray-500 mb-6">Comienza agregando tu primer elemento</p>
             <button 
                 onclick="window.inventarioController.crearElemento()" 
-                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold inline-flex items-center gap-2">
+                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold shadow-md hover:shadow-lg flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                 </svg>
-                Crear Primer Elemento
+                Nuevo Elemento
             </button>
+        </div>
+    `;
+}
 
-            <!-- Información útil sobre tipos de elementos -->
-            <div class="mt-12 max-w-3xl mx-auto">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    ${renderEmptyStateCard(
-                        '🔢',
-                        'Elementos con Series',
-                        'Para elementos que necesitan identificación única',
-                        'Carpas, equipos de sonido, proyectores'
-                    )}
-                    ${renderEmptyStateCard(
-                        '📊',
-                        'Stock General',
-                        'Para elementos que se manejan por cantidad',
-                        'Tubos, lonas, tornillos, cables'
-                    )}
-                </div>
+/**
+ * Renderiza filtros rápidos por estado
+ */
+function renderFiltrosPorEstado(grupos) {
+    const estados = [
+        { key: 'AVAILABLE', label: 'Disponibles', color: 'green' },
+        { key: 'RENTED', label: 'Alquilados', color: 'purple' },
+        { key: 'CLEANING', label: 'En Limpieza', color: 'yellow' },
+        { key: 'MAINTENANCE', label: 'Mantenimiento', color: 'orange' },
+        { key: 'RETIRED', label: 'Retirados', color: 'gray' }
+    ];
+
+    return `
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+            ${estados.map(estado => {
+                const cantidad = grupos[estado.key].length;
+                return `
+                    <div class="bg-white p-4 rounded-lg shadow-sm border-2 border-${estado.color}-200 hover:shadow-md transition text-center">
+                        <div class="text-2xl mb-2">${ICONOS_CURRENT_STATUS[estado.key]}</div>
+                        <div class="text-3xl font-bold text-gray-800">${cantidad}</div>
+                        <div class="text-sm text-gray-600 mt-1">${estado.label}</div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+/**
+ * Renderiza los grupos de estado con sus elementos
+ */
+function renderGruposDeEstado(grupos) {
+    return `
+        <div class="space-y-8">
+            ${renderGrupoDisponibles(grupos.AVAILABLE)}
+            ${renderGrupoAlquilados(grupos.RENTED)}
+            ${renderGrupoLimpieza(grupos.CLEANING)}
+            ${renderGrupoMantenimiento(grupos.MAINTENANCE)}
+            ${grupos.RETIRED.length > 0 ? renderGrupoRetirados(grupos.RETIRED) : ''}
+        </div>
+    `;
+}
+
+/**
+ * GRUPO: DISPONIBLES
+ */
+function renderGrupoDisponibles(elementos) {
+    if (elementos.length === 0) {
+        return `
+            <div class="bg-white rounded-xl p-6 border-l-4 border-green-500">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    ${ICONOS_CURRENT_STATUS.AVAILABLE} Disponibles para Alquilar
+                </h3>
+                <p class="text-gray-500">No hay elementos disponibles</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="bg-white rounded-xl p-6 shadow-md border-l-4 border-green-500">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                ${ICONOS_CURRENT_STATUS.AVAILABLE} Disponibles para Alquilar (${elementos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${elementos.map(elemento => renderTarjetaDisponible(elemento)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderTarjetaDisponible(elemento) {
+    return `
+        <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition bg-gradient-to-br from-white to-green-50">
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-gray-800">${elemento.nombre}</h4>
+                <span class="px-2 py-1 text-xs rounded ${COLORES_CLEANING_STATUS[elemento.cleaning_status]}">
+                    ${CLEANING_STATUS_LABELS[elemento.cleaning_status]}
+                </span>
+            </div>
+            
+            <div class="space-y-1 text-sm mb-3">
+                <p><strong>Cantidad:</strong> ${elemento.cantidad}</p>
+                ${elemento.lote_numero ? `<p class="text-xs text-gray-500">Lote: ${elemento.lote_numero}</p>` : ''}
+            </div>
+
+            <div class="flex gap-2">
+                <button 
+                    onclick="window.inventarioController.cambiarEstadoLote(${JSON.stringify(elemento).replace(/"/g, '&quot;')})"
+                    class="flex-1 px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs font-medium">
+                    ⚡ Cambiar Estado
+                </button>
+                <button 
+                    onclick="window.inventarioController.verDetalle(${elemento.id})"
+                    class="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs">
+                    👁️
+                </button>
             </div>
         </div>
     `;
 }
 
 /**
- * Renderiza una tarjeta informativa en el estado vacío
- * @param {string} icon - Emoji del icono
- * @param {string} title - Título
- * @param {string} description - Descripción
- * @param {string} examples - Ejemplos
- * @returns {string} HTML de la tarjeta
+ * GRUPO: ALQUILADOS
  */
-function renderEmptyStateCard(icon, title, description, examples) {
+function renderGrupoAlquilados(elementos) {
+    if (elementos.length === 0) {
+        return `
+            <div class="bg-white rounded-xl p-6 border-l-4 border-purple-500">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    ${ICONOS_CURRENT_STATUS.RENTED} Actualmente Alquilados
+                </h3>
+                <p class="text-gray-500">No hay elementos alquilados</p>
+            </div>
+        `;
+    }
+
     return `
-        <div class="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 text-left">
-            <div class="text-3xl mb-3">${icon}</div>
-            <h4 class="font-semibold text-gray-800 mb-2">${title}</h4>
-            <p class="text-sm text-gray-600 mb-3">${description}</p>
-            <p class="text-xs text-gray-500">
-                <strong>Ejemplos:</strong> ${examples}
-            </p>
+        <div class="bg-white rounded-xl p-6 shadow-md border-l-4 border-purple-500">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                ${ICONOS_CURRENT_STATUS.RENTED} Actualmente Alquilados (${elementos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${elementos.map(elemento => renderTarjetaAlquilado(elemento)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderTarjetaAlquilado(elemento) {
+    return `
+        <div class="border border-purple-200 rounded-lg p-4 hover:shadow-md transition bg-gradient-to-br from-white to-purple-50">
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-gray-800">${elemento.nombre}</h4>
+                <span class="px-2 py-1 text-xs rounded bg-purple-100 text-purple-800">
+                    📤 ALQUILADO
+                </span>
+            </div>
+            
+            <div class="space-y-1 text-sm mb-3">
+                <p><strong>Cantidad:</strong> ${elemento.cantidad}</p>
+                ${elemento.lote_numero ? `<p class="text-xs text-gray-500">Lote: ${elemento.lote_numero}</p>` : ''}
+            </div>
+
+            <button 
+                onclick="window.inventarioController.procesarDevolucion(${JSON.stringify(elemento).replace(/"/g, '&quot;')})"
+                class="w-full px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium">
+                📥 Procesar Devolución
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * GRUPO: EN LIMPIEZA
+ */
+function renderGrupoLimpieza(elementos) {
+    if (elementos.length === 0) {
+        return `
+            <div class="bg-white rounded-xl p-6 border-l-4 border-yellow-500">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    ${ICONOS_CURRENT_STATUS.CLEANING} En Proceso de Limpieza
+                </h3>
+                <p class="text-gray-500">No hay elementos en limpieza</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="bg-white rounded-xl p-6 shadow-md border-l-4 border-yellow-500">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                ${ICONOS_CURRENT_STATUS.CLEANING} En Proceso de Limpieza (${elementos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${elementos.map(elemento => renderTarjetaLimpieza(elemento)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderTarjetaLimpieza(elemento) {
+    return `
+        <div class="border border-yellow-200 rounded-lg p-4 hover:shadow-md transition bg-gradient-to-br from-white to-yellow-50">
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-gray-800">${elemento.nombre}</h4>
+                <span class="px-2 py-1 text-xs rounded ${COLORES_CLEANING_STATUS[elemento.cleaning_status]}">
+                    ${CLEANING_STATUS_LABELS[elemento.cleaning_status]}
+                </span>
+            </div>
+            
+            <div class="space-y-1 text-sm mb-3">
+                <p><strong>Cantidad:</strong> ${elemento.cantidad}</p>
+                ${elemento.lote_numero ? `<p class="text-xs text-gray-500">Lote: ${elemento.lote_numero}</p>` : ''}
+            </div>
+
+            <button 
+                onclick="window.inventarioController.completarLimpieza(${JSON.stringify(elemento).replace(/"/g, '&quot;')})"
+                class="w-full px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium">
+                ✅ Completar Limpieza
+            </button>
+        </div>
+    `;
+}
+
+/**
+ * GRUPO: MANTENIMIENTO
+ */
+function renderGrupoMantenimiento(elementos) {
+    if (elementos.length === 0) {
+        return `
+            <div class="bg-white rounded-xl p-6 border-l-4 border-orange-500">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">
+                    ${ICONOS_CURRENT_STATUS.MAINTENANCE} En Mantenimiento/Reparación
+                </h3>
+                <p class="text-gray-500">No hay elementos en mantenimiento</p>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="bg-white rounded-xl p-6 shadow-md border-l-4 border-orange-500">
+            <h3 class="text-xl font-bold text-gray-800 mb-4">
+                ${ICONOS_CURRENT_STATUS.MAINTENANCE} En Mantenimiento/Reparación (${elementos.length})
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                ${elementos.map(elemento => renderTarjetaMantenimiento(elemento)).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderTarjetaMantenimiento(elemento) {
+    return `
+        <div class="border border-orange-200 rounded-lg p-4 hover:shadow-md transition bg-gradient-to-br from-white to-orange-50">
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-gray-800">${elemento.nombre}</h4>
+                <span class="px-2 py-1 text-xs rounded ${COLORES_CLEANING_STATUS[elemento.cleaning_status]}">
+                    ${CLEANING_STATUS_LABELS[elemento.cleaning_status]}
+                </span>
+            </div>
+            
+            <div class="space-y-1 text-sm mb-3">
+                <p><strong>Cantidad:</strong> ${elemento.cantidad}</p>
+                ${elemento.lote_numero ? `<p class="text-xs text-gray-500">Lote: ${elemento.lote_numero}</p>` : ''}
+            </div>
+
+            <div class="flex gap-2">
+                <button 
+                    onclick="window.inventarioController.cambiarEstadoLote(${JSON.stringify(elemento).replace(/"/g, '&quot;')})"
+                    class="flex-1 px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-xs font-medium">
+                    ✅ Completar Reparación
+                </button>
+                <button 
+                    onclick="window.inventarioController.verDetalle(${elemento.id})"
+                    class="px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs">
+                    👁️
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * GRUPO: RETIRADOS (colapsable)
+ */
+function renderGrupoRetirados(elementos) {
+    return `
+        <details class="bg-gray-100 rounded-xl p-6 border-l-4 border-gray-400">
+            <summary class="text-xl font-bold text-gray-700 cursor-pointer mb-4">
+                ${ICONOS_CURRENT_STATUS.RETIRED} Retirados del Inventario (${elementos.length})
+            </summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                ${elementos.map(elemento => renderTarjetaRetirado(elemento)).join('')}
+            </div>
+        </details>
+    `;
+}
+
+function renderTarjetaRetirado(elemento) {
+    return `
+        <div class="border border-gray-300 rounded-lg p-4 hover:shadow-md transition bg-white opacity-75">
+            <div class="flex justify-between items-start mb-3">
+                <h4 class="font-bold text-gray-600">${elemento.nombre}</h4>
+                <span class="px-2 py-1 text-xs rounded bg-gray-200 text-gray-700">
+                    🚫 RETIRADO
+                </span>
+            </div>
+            
+            <div class="space-y-1 text-sm mb-3 text-gray-600">
+                <p><strong>Cantidad final:</strong> ${elemento.cantidad}</p>
+                ${elemento.lote_numero ? `<p class="text-xs">Lote: ${elemento.lote_numero}</p>` : ''}
+            </div>
+
+            <button 
+                onclick="window.inventarioController.verHistorialMovimientos(${elemento.id})"
+                class="w-full px-3 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs font-medium">
+                📜 Ver Historial
+            </button>
         </div>
     `;
 }
 
 /**
  * Renderiza vista de error
- * @returns {string} HTML del error
  */
 function renderError() {
     return `
         <div class="text-center py-12">
-            <div class="mb-4">
-                <svg class="w-16 h-16 mx-auto text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </div>
+            <svg class="w-16 h-16 mx-auto text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
             <h3 class="text-xl font-semibold text-gray-800 mb-2">Error al cargar inventario</h3>
-            <p class="text-gray-600 mb-6">No se pudieron cargar los elementos. Por favor, intenta de nuevo.</p>
+            <p class="text-gray-600 mb-6">No se pudieron cargar los elementos</p>
             <button 
                 onclick="window.app.navegarA('inventario')" 
-                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-semibold">
+                class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                 Reintentar
             </button>
         </div>
     `;
-}
-
-/**
- * Trunca un texto a un número máximo de caracteres
- * @param {string} text - Texto a truncar
- * @param {number} maxLength - Longitud máxima
- * @returns {string} Texto truncado
- */
-function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
 }
