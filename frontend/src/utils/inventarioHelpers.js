@@ -1,84 +1,50 @@
 // frontend/src/utils/inventarioHelpers.js
+// VERSIÓN ADAPTADA PARA SISTEMA DE COLUMNAS DE CANTIDAD
 
 /**
- * Utilidades para el módulo de inventario
- * Centraliza helpers, formatters y cálculos
+ * Mapeo de estados usando las columnas de cantidad
  */
+export const ESTADO_COLUMNAS = {
+    AVAILABLE: 'cantidad_disponible',
+    RENTED: 'cantidad_alquilada',
+    CLEANING: 'cantidad_en_limpieza',
+    MAINTENANCE: 'cantidad_en_mantenimiento',
+    DAMAGED: 'cantidad_danada'
+};
 
-// ============================================
-// ESTADOS Y COLORES
-// ============================================
-
-/**
- * Mapeo de current_status a información visual
- */
 export const CURRENT_STATUS_INFO = {
     AVAILABLE: {
         label: 'Disponible',
         color: 'bg-green-100 text-green-800',
         icon: '✓',
-        description: 'Listo para usar'
+        columna: 'cantidad_disponible'
     },
     RENTED: {
         label: 'Alquilado',
         color: 'bg-blue-100 text-blue-800',
         icon: '📤',
-        description: 'En alquiler'
+        columna: 'cantidad_alquilada'
     },
     CLEANING: {
         label: 'En Limpieza',
         color: 'bg-yellow-100 text-yellow-800',
         icon: '🧹',
-        description: 'Requiere limpieza'
+        columna: 'cantidad_en_limpieza'
     },
     MAINTENANCE: {
         label: 'Mantenimiento',
         color: 'bg-orange-100 text-orange-800',
         icon: '🔧',
-        description: 'En reparación'
-    },
-    RETIRED: {
-        label: 'Retirado',
-        color: 'bg-gray-100 text-gray-800',
-        icon: '📦',
-        description: 'Fuera de servicio'
-    }
-};
-
-/**
- * Mapeo de cleaning_status a información visual
- */
-export const CLEANING_STATUS_INFO = {
-    CLEAN: {
-        label: 'Limpio',
-        color: 'bg-green-100 text-green-800',
-        icon: '✨'
-    },
-    DIRTY: {
-        label: 'Sucio',
-        color: 'bg-yellow-100 text-yellow-800',
-        icon: '🧽'
-    },
-    VERY_DIRTY: {
-        label: 'Muy Sucio',
-        color: 'bg-orange-100 text-orange-800',
-        icon: '🧼'
+        columna: 'cantidad_en_mantenimiento'
     },
     DAMAGED: {
         label: 'Dañado',
         color: 'bg-red-100 text-red-800',
-        icon: '⚠️'
-    },
-    GOOD: {
-        label: 'Buen Estado',
-        color: 'bg-green-100 text-green-800',
-        icon: '✓'
+        icon: '⚠️',
+        columna: 'cantidad_danada'
     }
 };
 
-/**
- * Estados clásicos (para elementos con series)
- */
 export const COLORES_ESTADO_CLASICO = {
     nuevo: 'bg-blue-100 text-blue-800',
     bueno: 'bg-green-100 text-green-800',
@@ -88,102 +54,49 @@ export const COLORES_ESTADO_CLASICO = {
     agotado: 'bg-gray-100 text-gray-800'
 };
 
-// ============================================
-// FORMATEO DE TEXTO
-// ============================================
-
 /**
- * Trunca un texto a una longitud máxima
- * @param {string} text - Texto a truncar
- * @param {number} maxLength - Longitud máxima
- * @returns {string} Texto truncado
+ * Construye distribución de estados desde las columnas de cantidad
  */
-export function truncateText(text, maxLength = 50) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
+export function construirDistribucionEstados(elemento) {
+    return {
+        AVAILABLE: elemento.cantidad_disponible || 0,
+        RENTED: elemento.cantidad_alquilada || 0,
+        CLEANING: elemento.cantidad_en_limpieza || 0,
+        MAINTENANCE: elemento.cantidad_en_mantenimiento || 0,
+        DAMAGED: elemento.cantidad_danada || 0
+    };
 }
 
 /**
- * Capitaliza la primera letra de un texto
- * @param {string} text - Texto a capitalizar
- * @returns {string} Texto capitalizado
+ * Procesa elementos para la vista
+ * NO agrupa lotes, solo añade información de distribución
  */
-export function capitalize(text) {
-    if (!text) return '';
-    return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-}
-
-/**
- * Formatea un número con separadores de miles
- * @param {number} num - Número a formatear
- * @returns {string} Número formateado
- */
-export function formatNumber(num) {
-    return new Intl.NumberFormat('es-CO').format(num);
-}
-
-// ============================================
-// CÁLCULOS DE LOTES
-// ============================================
-
-/**
- * Agrupa lotes por elemento base y calcula totales
- * @param {Array} elementos - Array de elementos/lotes
- * @returns {Array} Array de elementos agrupados con distribución de estados
- */
-export function agruparLotesPorElemento(elementos) {
-    const grupos = {};
-
-    for (const elem of elementos) {
-        // Si requiere series, no agrupar
+export function procesarElementosParaVista(elementos) {
+    return elementos.map(elem => {
         if (elem.requiere_series) {
-            grupos[elem.id] = {
+            // Elementos con series no necesitan procesamiento adicional
+            return {
                 ...elem,
                 es_grupo: false,
-                total_unidades: elem.cantidad,
-                lotes: []
+                total_unidades: elem.cantidad
             };
-            continue;
         }
 
-        // Agrupar por elemento_base_id
-        const baseId = elem.elemento_base_id || elem.id;
+        // Elementos sin series: construir distribución
+        const distribucion = construirDistribucionEstados(elem);
         
-        if (!grupos[baseId]) {
-            grupos[baseId] = {
-                id: baseId,
-                nombre: elem.nombre,
-                descripcion: elem.descripcion,
-                categoria_nombre: elem.categoria_nombre,
-                subcategoria_nombre: elem.subcategoria_nombre,
-                requiere_series: false,
-                es_grupo: true,
-                total_unidades: 0,
-                lotes: [],
-                distribucion_estados: {}
-            };
-        }
-
-        grupos[baseId].total_unidades += elem.cantidad;
-        grupos[baseId].lotes.push(elem);
-
-        // Calcular distribución de estados
-        const status = elem.current_status;
-        if (!grupos[baseId].distribucion_estados[status]) {
-            grupos[baseId].distribucion_estados[status] = 0;
-        }
-        grupos[baseId].distribucion_estados[status] += elem.cantidad;
-    }
-
-    return Object.values(grupos);
+        return {
+            ...elem,
+            es_grupo: false, // No hay agrupación de lotes
+            total_unidades: elem.cantidad,
+            distribucion_estados: distribucion,
+            cantidad_disponible: distribucion.AVAILABLE
+        };
+    });
 }
 
 /**
- * Calcula el porcentaje de un estado en la distribución
- * @param {number} cantidad - Cantidad de ese estado
- * @param {number} total - Total de unidades
- * @returns {number} Porcentaje (0-100)
+ * Calcula porcentaje
  */
 export function calcularPorcentaje(cantidad, total) {
     if (!total || total === 0) return 0;
@@ -191,14 +104,10 @@ export function calcularPorcentaje(cantidad, total) {
 }
 
 /**
- * Obtiene el estado dominante en un grupo de lotes
- * @param {object} distribucion - Objeto con distribución de estados
- * @returns {string} Estado dominante
+ * Obtiene el estado con mayor cantidad
  */
 export function obtenerEstadoDominante(distribucion) {
-    if (!distribucion || Object.keys(distribucion).length === 0) {
-        return 'AVAILABLE';
-    }
+    if (!distribucion) return 'AVAILABLE';
 
     let maxCantidad = 0;
     let estadoDominante = 'AVAILABLE';
@@ -213,45 +122,34 @@ export function obtenerEstadoDominante(distribucion) {
     return estadoDominante;
 }
 
-// ============================================
-// VALIDACIONES
-// ============================================
-
 /**
- * Verifica si un elemento tiene lotes activos
- * @param {object} elemento - Elemento a verificar
- * @returns {boolean}
+ * Trunca texto
  */
-export function tieneLotesActivos(elemento) {
-    if (elemento.requiere_series) return false;
-    return elemento.lotes && elemento.lotes.length > 0;
+export function truncateText(text, maxLength = 50) {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
 }
 
 /**
- * Calcula cantidad disponible para alquiler
- * @param {object} elemento - Elemento/grupo
- * @returns {number} Cantidad disponible
+ * Formatea número
+ */
+export function formatNumber(num) {
+    return new Intl.NumberFormat('es-CO').format(num);
+}
+
+/**
+ * Cantidad disponible para alquilar
  */
 export function cantidadDisponible(elemento) {
     if (elemento.requiere_series) {
-        // Para series, contar las que están en estado "bueno" o "nuevo"
         return elemento.cantidad;
     }
-
-    // Para lotes, sumar AVAILABLE
-    const disponible = elemento.distribucion_estados?.AVAILABLE || 0;
-    return disponible;
+    return elemento.cantidad_disponible || 0;
 }
 
-// ============================================
-// FILTROS Y BÚSQUEDA
-// ============================================
-
 /**
- * Filtra elementos por texto de búsqueda
- * @param {Array} elementos - Array de elementos
- * @param {string} searchText - Texto de búsqueda
- * @returns {Array} Elementos filtrados
+ * Filtra por texto
  */
 export function filtrarPorTexto(elementos, searchText) {
     if (!searchText || searchText.trim() === '') return elementos;
@@ -261,109 +159,35 @@ export function filtrarPorTexto(elementos, searchText) {
     return elementos.filter(elem => {
         const nombre = (elem.nombre || '').toLowerCase();
         const descripcion = (elem.descripcion || '').toLowerCase();
-        const categoria = (elem.categoria_nombre || '').toLowerCase();
         
-        return nombre.includes(query) || 
-               descripcion.includes(query) || 
-               categoria.includes(query);
+        return nombre.includes(query) || descripcion.includes(query);
     });
 }
 
 /**
- * Filtra elementos por estado
- * @param {Array} elementos - Array de elementos
- * @param {string} estado - Estado a filtrar
- * @returns {Array} Elementos filtrados
- */
-export function filtrarPorEstado(elementos, estado) {
-    if (!estado || estado === 'todos') return elementos;
-
-    return elementos.filter(elem => {
-        if (elem.requiere_series) {
-            return elem.estado === estado;
-        } else {
-            // Para lotes, verificar si tiene ese estado
-            return elem.distribucion_estados && 
-                   elem.distribucion_estados[estado] > 0;
-        }
-    });
-}
-
-// ============================================
-// ORDENAMIENTO
-// ============================================
-
-/**
- * Ordena elementos por nombre
- * @param {Array} elementos - Array de elementos
- * @param {string} orden - 'asc' o 'desc'
- * @returns {Array} Elementos ordenados
+ * Ordena por nombre
  */
 export function ordenarPorNombre(elementos, orden = 'asc') {
     return [...elementos].sort((a, b) => {
         const nombreA = (a.nombre || '').toLowerCase();
         const nombreB = (b.nombre || '').toLowerCase();
         
-        if (orden === 'asc') {
-            return nombreA.localeCompare(nombreB);
-        } else {
-            return nombreB.localeCompare(nombreA);
-        }
+        return orden === 'asc' 
+            ? nombreA.localeCompare(nombreB)
+            : nombreB.localeCompare(nombreA);
     });
 }
-
-/**
- * Ordena elementos por cantidad
- * @param {Array} elementos - Array de elementos
- * @param {string} orden - 'asc' o 'desc'
- * @returns {Array} Elementos ordenados
- */
-export function ordenarPorCantidad(elementos, orden = 'desc') {
-    return [...elementos].sort((a, b) => {
-        const cantA = a.total_unidades || a.cantidad || 0;
-        const cantB = b.total_unidades || b.cantidad || 0;
-        
-        return orden === 'asc' ? cantA - cantB : cantB - cantA;
-    });
-}
-
-// ============================================
-// GENERADORES DE LOTE_NUMERO
-// ============================================
-
-/**
- * Genera un número de lote único
- * @param {string} nombreElemento - Nombre del elemento
- * @param {string} estado - Estado del lote
- * @returns {string} Número de lote generado
- */
-export function generarNumeroLote(nombreElemento, estado) {
-    const prefijo = nombreElemento.substring(0, 3).toUpperCase();
-    const timestamp = Date.now().toString().slice(-6);
-    const estadoCorto = estado.substring(0, 3).toUpperCase();
-    
-    return `${prefijo}-${estadoCorto}-${timestamp}`;
-}
-
-// ============================================
-// EXPORTS DE CONVENIENCIA
-// ============================================
 
 export default {
     CURRENT_STATUS_INFO,
-    CLEANING_STATUS_INFO,
     COLORES_ESTADO_CLASICO,
-    truncateText,
-    capitalize,
-    formatNumber,
-    agruparLotesPorElemento,
+    construirDistribucionEstados,
+    procesarElementosParaVista,
     calcularPorcentaje,
     obtenerEstadoDominante,
-    tieneLotesActivos,
+    truncateText,
+    formatNumber,
     cantidadDisponible,
     filtrarPorTexto,
-    filtrarPorEstado,
-    ordenarPorNombre,
-    ordenarPorCantidad,
-    generarNumeroLote
+    ordenarPorNombre
 };

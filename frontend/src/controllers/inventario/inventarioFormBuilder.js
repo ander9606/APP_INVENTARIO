@@ -1,3 +1,5 @@
+// frontend/src/controllers/inventario/inventarioFormBuilder.js
+
 import { categoriaService } from '../../services/categoriaService.js';
 import { ESTADOS_ELEMENTO, COLORES_ESTADO } from '../../utils/constants.js';
 
@@ -29,7 +31,7 @@ export const inventarioFormBuilder = {
                         ${this.construirCheckboxSeries()}
                         ${this.construirContenedorSeries()}
                         ${this.construirCampoUbicacion()}
-                        ${this.construirBotones()}
+                        ${this.construirBotones('crear')}
                     </form>
                 </div>
             `;
@@ -44,10 +46,63 @@ export const inventarioFormBuilder = {
     },
 
     /**
-     * Construye campos básicos (nombre y descripción)
-     * @returns {string} HTML de los campos
+     * Construye el formulario completo para editar un elemento
+     * @param {object} elemento - Elemento a editar
+     * @param {Array} series - Series del elemento (si aplica)
+     * @returns {Promise<string>} HTML del formulario
      */
-    construirCamposBasicos() {
+    async construirFormularioEdicion(elemento, series = []) {
+        try {
+            // Obtener categorías para el select
+            const respuestaCategorias = await categoriaService.obtenerJerarquia();
+            const categorias = respuestaCategorias.data;
+            const opcionesCategorias = this.construirOpcionesCategorias(categorias);
+
+            return `
+                <div class="p-6">
+                    <h3 class="text-2xl font-bold mb-4 text-gray-800">Editar Elemento</h3>
+                    
+                    <form id="form-elemento-editar" class="space-y-4">
+                        ${this.construirCamposBasicos(elemento)}
+                        ${this.construirSelectCategorias(opcionesCategorias, elemento.categoria_id)}
+                        ${this.construirCamposCantidadEstado(elemento)}
+                        ${this.construirCampoUbicacion(elemento)}
+                        ${this.construirBotones('editar')}
+                    </form>
+                    
+                    ${elemento.requiere_series && series.length > 0 ? `
+                        <div class="mt-6 pt-6 border-t">
+                            <h4 class="font-semibold text-gray-700 mb-3">
+                                Series Existentes (${series.length})
+                            </h4>
+                            <p class="text-sm text-gray-500 mb-3">
+                                La edición de series individuales se hace desde la vista de detalle
+                            </p>
+                            <div class="max-h-40 overflow-y-auto space-y-1">
+                                ${series.map(s => `
+                                    <div class="text-sm font-mono text-gray-600 px-3 py-1 bg-gray-50 rounded">
+                                        ${s.numero_serie}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        } catch (error) {
+            console.error('Error al construir formulario de edición:', error);
+            return `
+                <div class="p-6">
+                    <p class="text-red-500">Error al cargar el formulario</p>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Construye campos básicos (nombre y descripción)
+     */
+    construirCamposBasicos(elemento = null) {
         return `
             <!-- Nombre -->
             <div>
@@ -58,6 +113,7 @@ export const inventarioFormBuilder = {
                     type="text" 
                     id="nombre" 
                     required 
+                    value="${elemento?.nombre || ''}"
                     placeholder="Ej: Carpa 10x10, Tubo galvanizado 3m..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
@@ -73,17 +129,15 @@ export const inventarioFormBuilder = {
                     rows="3"
                     placeholder="Descripción detallada del elemento..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                ></textarea>
+                >${elemento?.descripcion || ''}</textarea>
             </div>
         `;
     },
 
     /**
      * Construye el select de categorías
-     * @param {string} opciones - HTML de las opciones del select
-     * @returns {string} HTML del select
      */
-    construirSelectCategorias(opciones) {
+    construirSelectCategorias(opciones, categoriaSeleccionada = null) {
         return `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -101,12 +155,11 @@ export const inventarioFormBuilder = {
     },
 
     /**
-     * Construye campos de cantidad y estado en la misma fila
-     * @returns {string} HTML de los campos
+     * Construye campos de cantidad y estado
      */
-    construirCamposCantidadEstado() {
+    construirCamposCantidadEstado(elemento = null) {
         const opcionesEstado = ESTADOS_ELEMENTO.map(estado => 
-            `<option value="${estado}" ${estado === 'bueno' ? 'selected' : ''}>${estado}</option>`
+            `<option value="${estado}" ${elemento?.estado === estado ? 'selected' : ''}>${estado}</option>`
         ).join('');
 
         return `
@@ -120,7 +173,7 @@ export const inventarioFormBuilder = {
                         id="cantidad" 
                         required 
                         min="0"
-                        value="1"
+                        value="${elemento?.cantidad || 1}"
                         class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     >
                 </div>
@@ -142,7 +195,6 @@ export const inventarioFormBuilder = {
 
     /**
      * Construye el checkbox de "Requiere series"
-     * @returns {string} HTML del checkbox
      */
     construirCheckboxSeries() {
         return `
@@ -166,8 +218,7 @@ export const inventarioFormBuilder = {
     },
 
     /**
-     * Construye el contenedor de series (inicialmente oculto)
-     * @returns {string} HTML del contenedor
+     * Construye el contenedor de series
      */
     construirContenedorSeries() {
         return `
@@ -175,7 +226,7 @@ export const inventarioFormBuilder = {
                 <div class="border-t pt-4">
                     <h4 class="font-semibold text-gray-700 mb-3">Números de Serie</h4>
                     <div id="lista-series" class="space-y-2 mb-3">
-                        <!-- Los campos se agregarán dinámicamente por seriesManager -->
+                        <!-- Los campos se agregarán dinámicamente -->
                     </div>
                     <button 
                         type="button"
@@ -189,10 +240,9 @@ export const inventarioFormBuilder = {
     },
 
     /**
-     * Construye el campo de ubicación (solo visible si NO requiere series)
-     * @returns {string} HTML del campo
+     * Construye el campo de ubicación
      */
-    construirCampoUbicacion() {
+    construirCampoUbicacion(elemento = null) {
         return `
             <div id="campo-ubicacion">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -201,6 +251,7 @@ export const inventarioFormBuilder = {
                 <input 
                     type="text" 
                     id="ubicacion"
+                    value="${elemento?.ubicacion || ''}"
                     placeholder="Ej: Bodega A, Estante 3..."
                     class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
@@ -210,9 +261,10 @@ export const inventarioFormBuilder = {
 
     /**
      * Construye los botones del formulario
-     * @returns {string} HTML de los botones
      */
-    construirBotones() {
+    construirBotones(tipo = 'crear') {
+        const textoBoton = tipo === 'crear' ? '✓ Crear Elemento' : '✓ Guardar Cambios';
+        
         return `
             <div class="flex gap-3 justify-end pt-4 border-t">
                 <button 
@@ -224,26 +276,22 @@ export const inventarioFormBuilder = {
                 <button 
                     type="submit" 
                     class="px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
-                    ✓ Crear Elemento
+                    ${textoBoton}
                 </button>
             </div>
         `;
     },
 
     /**
-     * Construye opciones del select de categorías con indentación jerárquica
-     * @param {Array} categorias - Array de categorías jerárquicas
-     * @param {number} nivel - Nivel de indentación
-     * @returns {string} HTML de las opciones
+     * Construye opciones del select de categorías con indentación
      */
     construirOpcionesCategorias(categorias, nivel = 0) {
         let opciones = '';
-        const indent = '　'.repeat(nivel); // Espacio de indentación japonés
+        const indent = '　'.repeat(nivel);
 
         for (const cat of categorias) {
             opciones += `<option value="${cat.id}">${indent}${cat.nombre}</option>`;
             
-            // Si tiene hijos, agregarlos recursivamente
             if (cat.hijos && cat.hijos.length > 0) {
                 opciones += this.construirOpcionesCategorias(cat.hijos, nivel + 1);
             }
@@ -254,9 +302,6 @@ export const inventarioFormBuilder = {
 
     /**
      * Construye la vista de detalle de un elemento
-     * @param {object} elemento - Objeto con datos del elemento
-     * @param {Array} series - Array de series (opcional)
-     * @returns {string} HTML de la vista de detalle
      */
     construirVistaDetalle(elemento, series = []) {
         return `
@@ -325,3 +370,5 @@ export const inventarioFormBuilder = {
         `;
     }
 };
+
+export default inventarioFormBuilder;
